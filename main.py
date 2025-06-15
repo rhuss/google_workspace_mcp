@@ -2,6 +2,7 @@ import argparse
 import logging
 import os
 import sys
+from importlib import metadata
 
 # Local imports
 from core.server import server, set_transport_mode
@@ -42,7 +43,7 @@ def main():
     parser.add_argument('--single-user', action='store_true',
                         help='Run in single-user mode - bypass session mapping and use any credentials from ./credentials directory')
     parser.add_argument('--tools', nargs='*',
-                        choices=['gmail', 'drive', 'calendar', 'docs', 'sheets', 'chat', 'forms'],
+                        choices=['gmail', 'drive', 'calendar', 'docs', 'sheets', 'chat', 'forms', 'slides'],
                         help='Specify which tools to register. If not provided, all tools are registered.')
     parser.add_argument('--transport', choices=['stdio', 'streamable-http'], default='stdio',
                         help='Transport mode: stdio (default) or streamable-http')
@@ -55,7 +56,11 @@ def main():
     print("🔧 Google Workspace MCP Server")
     print("=" * 35)
     print("📋 Server Information:")
-    print(f"   📦 Version: 0.1.1")
+    try:
+        version = metadata.version("workspace-mcp")
+    except metadata.PackageNotFoundError:
+        version = "dev"
+    print(f"   📦 Version: {version}")
     print(f"   🌐 Transport: {args.transport}")
     if args.transport == 'streamable-http':
         print(f"   🔗 URL: {base_uri}:{port}")
@@ -72,7 +77,8 @@ def main():
         'docs': lambda: __import__('gdocs.docs_tools'),
         'sheets': lambda: __import__('gsheets.sheets_tools'),
         'chat': lambda: __import__('gchat.chat_tools'),
-        'forms': lambda: __import__('gforms.forms_tools')
+        'forms': lambda: __import__('gforms.forms_tools'),
+        'slides': lambda: __import__('gslides.slides_tools')
     }
 
     tool_icons = {
@@ -82,7 +88,8 @@ def main():
         'docs': '📄',
         'sheets': '📊',
         'chat': '💬',
-        'forms': '📝'
+        'forms': '📝',
+        'slides': '🖼️'
     }
 
     # Import specified tools or all tools if none specified

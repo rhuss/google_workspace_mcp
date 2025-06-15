@@ -4,12 +4,13 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
+[![PyPI](https://img.shields.io/pypi/v/workspace-mcp.svg)](https://pypi.org/project/workspace-mcp/)
 [![UV](https://img.shields.io/badge/Package%20Installer-UV-blueviolet)](https://github.com/astral-sh/uv)
 [![Website](https://img.shields.io/badge/Website-workspacemcp.com-green.svg)](https://workspacemcp.com)
 
 **The world's most feature-complete Google Workspace MCP server**
 
-*Connect MCP Clients, AI assistants and developer tools to Google Calendar, Drive, Gmail, Docs, Sheets, Forms, and Chat*
+*Connect MCP Clients, AI assistants and developer tools to Google Calendar, Drive, Gmail, Docs, Sheets, Slides, Forms, and Chat*
 
 </div>
 
@@ -45,6 +46,7 @@ A production-ready MCP server that integrates all major Google Workspace service
 - **📧 Gmail**: Complete email management with search, send, and draft capabilities
 - **📄 Google Docs**: Document operations including content extraction and creation
 - **📊 Google Sheets**: Comprehensive spreadsheet management with flexible cell operations
+- **🖼️ Google Slides**: Presentation management with slide creation, updates, and content manipulation
 - **📝 Google Forms**: Form creation, retrieval, publish settings, and response management
 - **💬 Google Chat**: Space management and messaging capabilities
 - **🔄 Multiple Transports**: HTTP with SSE fallback, OpenAPI compatibility via `mcpo`
@@ -55,13 +57,26 @@ A production-ready MCP server that integrates all major Google Workspace service
 
 ## 🚀 Quick Start
 
-### Prerequisites
+### Simplest Start (uvx - Recommended)
 
-- **Python 3.11+**
-- **[uv](https://github.com/astral-sh/uv)** (recommended) or pip
-- **Google Cloud Project** with OAuth 2.0 credentials
+Run instantly without installation:
 
-### Installation
+```bash
+# Start the server with all Google Workspace tools
+uvx workspace-mcp
+
+# Start with specific tools only
+uvx workspace-mcp --tools gmail drive calendar
+
+# Start in HTTP mode for debugging
+uvx workspace-mcp --transport streamable-http
+```
+
+*Requires Python 3.11+ and [uvx](https://github.com/astral-sh/uv). The package is available on [PyPI](https://pypi.org/project/workspace-mcp).*
+
+### Development Installation
+
+For development or customization:
 
 ```bash
 git clone https://github.com/taylorwilsdon/google_workspace_mcp.git
@@ -69,11 +84,17 @@ cd google_workspace_mcp
 uv run main.py
 ```
 
+### Prerequisites
+
+- **Python 3.11+**
+- **[uvx](https://github.com/astral-sh/uv)** (for instant installation) or [uv](https://github.com/astral-sh/uv) (for development)
+- **Google Cloud Project** with OAuth 2.0 credentials
+
 ### Configuration
 
 1. **Google Cloud Setup**:
    - Create OAuth 2.0 credentials (web application) in [Google Cloud Console](https://console.cloud.google.com/)
-   - Enable APIs: Calendar, Drive, Gmail, Docs, Sheets, Forms, Chat
+   - Enable APIs: Calendar, Drive, Gmail, Docs, Sheets, Slides, Forms, Chat
    - Download credentials as `client_secret.json` in project root
    - Add redirect URI: `http://localhost:8000/oauth2callback`
 
@@ -105,8 +126,8 @@ uv run main.py --tools sheets docs
 uv run main.py --single-user --tools gmail  # Can combine with other flags
 
 # Docker
-docker build -t google-workspace-mcp .
-docker run -p 8000:8000 -v $(pwd):/app google-workspace-mcp --transport streamable-http
+docker build -t workspace-mcp .
+docker run -p 8000:8000 -v $(pwd):/app workspace-mcp --transport streamable-http
 ```
 
 **Available Tools for `--tools` flag**: `gmail`, `drive`, `calendar`, `docs`, `sheets`, `forms`, `chat`
@@ -128,6 +149,18 @@ python install_claude.py
    - **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 3. Add the server configuration:
 
+```json
+{
+  "mcpServers": {
+    "google_workspace": {
+      "command": "uvx",
+      "args": ["workspace-mcp"]
+    }
+  }
+}
+```
+
+**Alternative (Development Installation)**:
 ```json
 {
   "mcpServers": {
