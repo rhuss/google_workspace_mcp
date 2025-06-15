@@ -2,6 +2,7 @@
 __pycache__/
 *.py[cod]
 *.so
+uv.lock
 
 # ---- Packaging ---------------------------------------------------------
 *.egg-info/
@@ -14,10 +15,11 @@ dist/
 venv/
 .idea/
 .vscode/
+mcp_server_debug.log
 
 # ---- macOS clutter -----------------------------------------------------
 .DS_Store
 
 # ---- Secrets -----------------------------------------------------------
 client_secret.json
-
+.credentials/*.json*

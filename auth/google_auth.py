@@ -43,6 +43,7 @@ def _find_any_credentials(base_dir: str = DEFAULT_CREDENTIALS_DIR) -> Optional[C
     """
     Find and load any valid credentials from the credentials directory.
     Used in single-user mode to bypass session-to-OAuth mapping.
+    Supports both OAuth2 and service account credentials.
 
     Returns:
         First valid Credentials object found, or None if none exist.
@@ -56,8 +57,25 @@ def _find_any_credentials(base_dir: str = DEFAULT_CREDENTIALS_DIR) -> Optional[C
         if filename.endswith('.json'):
             filepath = os.path.join(base_dir, filename)
             try:
+                # Check if this is a service account file
+                if "iam.gserviceaccount.com" in filename:
+                    logger.info(f"[single-user] Found service account file: {filepath}")
+                    try:
+                        from google.oauth2 import service_account
+                        credentials = service_account.Credentials.from_service_account_file(filepath,scopes=SCOPES)
+                        logger.info(f"[single-user] Successfully loaded service account credentials from {filepath}")
+
+                        # Force refresh to get a token, since by default it's not set and the library considers then credentials to be invalid
+                        credentials.refresh(Request())
+                        return credentials
+                    except Exception as e:
+                        logger.warning(f"[single-user] Error loading service account credentials from {filepath}: {e}")
+                        continue
+
+                # Handle OAuth2 credentials
                 with open(filepath, 'r') as f:
                     creds_data = json.load(f)
+                    
                 credentials = Credentials(
                     token=creds_data.get('token'),
                     refresh_token=creds_data.get('refresh_token'),
@@ -66,7 +84,7 @@ def _find_any_credentials(base_dir: str = DEFAULT_CREDENTIALS_DIR) -> Optional[C
                     client_secret=creds_data.get('client_secret'),
                     scopes=creds_data.get('scopes')
                 )
-                logger.info(f"[single-user] Found credentials in {filepath}")
+                logger.info(f"[single-user] Found OAuth2 credentials in {filepath}")
                 return credentials
             except (IOError, json.JSONDecodeError, KeyError) as e:
                 logger.warning(f"[single-user] Error loading credentials from {filepath}: {e}")
@@ -494,7 +512,6 @@ async def get_authenticated_google_service(
         session_id=None,  # Session ID not available in service layer
     )
 
-
     if not credentials or not credentials.valid:
         logger.warning(
             f"[{tool_name}] No valid credentials. Email: '{user_google_email}'."
@@ -525,8 +542,12 @@ async def get_authenticated_google_service(
         service = build(service_name, version, credentials=credentials)
         log_user_email = user_google_email
 
-        # Try to get email from credentials if needed for validation
-        if credentials and credentials.id_token:
+        # For service accounts, use the service account email
+        if hasattr(credentials, 'service_account_email'):
+            log_user_email = credentials.service_account_email
+            logger.info(f"[{tool_name}] Using service account: {log_user_email}")
+        # For OAuth2 credentials, try to get email from id_token
+        elif credentials and hasattr(credentials, 'id_token') and credentials.id_token:
             try:
                 import jwt
                 # Decode without verification (just to get email for logging)
