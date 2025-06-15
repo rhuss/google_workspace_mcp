@@ -14,10 +14,10 @@
                 "--single-user"
             ],
             "env": {
-                "WORKSPACE_MCP_PORT": "8056"
+                "WORKSPACE_MCP_PORT": "8000"
             },
             "justMyCode": false,
             "console": "integratedTerminal"
         }
     ]
-} 
+}

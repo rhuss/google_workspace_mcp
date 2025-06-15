@@ -273,7 +273,7 @@ async def copy_google_doc(
     Returns:
         str: A message containing the new document's ID and view link.
     """
-    logger.info(f'Copying document {template_id} with new title "{new_title}"')
+    logger.info(f"[copy_google_doc] Copying document {template_id} with new title {new_title}. Email: '{user_google_email}'")
 
     try:
         # Prepare copy metadata
@@ -339,8 +339,8 @@ async def replace_text_in_google_doc(
         service: Authenticated Google Docs service instance.
         user_google_email: Email of the user making the request.
         document_id: The Google Drive ID of the document where text replacements should be performed. This is the document you want to modify.
-        replacements: A dictionary mapping text patterns to their replacements. Each key is the text to find (case-insensitive), 
-                     and each value is the text to replace it with. Example: {'{{NAME}}': 'John Doe', '(% DATE %)': '2025-01-01'} 
+        replacements: A dictionary mapping text patterns to their replacements. Each key is the text to find (case-insensitive),
+                     and each value is the text to replace it with. Example: {'{{NAME}}': 'John Doe', '(% DATE %)': '2025-01-01'}
                      will replace all instances of '{{NAME}}' with 'John Doe' and '(% DATE %)' with '2025-01-01'.
     Returns:
         str: A message confirming the number of replacements that were successfully applied.
