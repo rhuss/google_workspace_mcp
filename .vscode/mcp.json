@@ -1,0 +1,9 @@
+{
+"servers": {
+     "google_workspace": {
+        "type": "stdio",
+        "command": "cmd",
+        "args": ["/c", "cd", "google_workspace_mcp", "&&", "uv", "run", "main.py", "--single-user", "--tools", "docs"]
+    }
+  }
+}

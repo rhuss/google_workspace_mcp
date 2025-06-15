@@ -14,7 +14,6 @@ dist/
 .venv/
 venv/
 .idea/
-.vscode/
 mcp_server_debug.log
 
 # ---- macOS clutter -----------------------------------------------------
