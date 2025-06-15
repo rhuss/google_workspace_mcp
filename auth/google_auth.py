@@ -1,18 +1,21 @@
 # auth/google_auth.py
 
-import os
+import asyncio
 import json
 import logging
-import asyncio
-from typing import List, Optional, Tuple, Dict, Any, Callable
 import os
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Tuple
 
+import jwt
+from google.auth.exceptions import RefreshError
+from google.auth.transport.requests import Request
+from google.oauth2 import service_account
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow, InstalledAppFlow
-from google.auth.transport.requests import Request
-from google.auth.exceptions import RefreshError
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
+
 from auth.scopes import OAUTH_STATE_TO_SESSION_ID_MAP, SCOPES
 
 # Configure logging
@@ -61,7 +64,6 @@ def _find_any_credentials(base_dir: str = DEFAULT_CREDENTIALS_DIR) -> Optional[C
                 if "iam.gserviceaccount.com" in filename:
                     logger.info(f"[single-user] Found service account file: {filepath}")
                     try:
-                        from google.oauth2 import service_account
                         credentials = service_account.Credentials.from_service_account_file(filepath,scopes=SCOPES)
                         logger.info(f"[single-user] Successfully loaded service account credentials from {filepath}")
 
@@ -75,7 +77,7 @@ def _find_any_credentials(base_dir: str = DEFAULT_CREDENTIALS_DIR) -> Optional[C
                 # Handle OAuth2 credentials
                 with open(filepath, 'r') as f:
                     creds_data = json.load(f)
-                    
+
                 credentials = Credentials(
                     token=creds_data.get('token'),
                     refresh_token=creds_data.get('refresh_token'),
@@ -140,7 +142,6 @@ def load_credentials_from_file(user_google_email: str, base_dir: str = DEFAULT_C
         expiry = None
         if creds_data.get('expiry'):
             try:
-                from datetime import datetime
                 expiry = datetime.fromisoformat(creds_data['expiry'])
             except (ValueError, TypeError) as e:
                 logger.warning(f"Could not parse expiry time for {user_google_email}: {e}")
@@ -549,7 +550,6 @@ async def get_authenticated_google_service(
         # For OAuth2 credentials, try to get email from id_token
         elif credentials and hasattr(credentials, 'id_token') and credentials.id_token:
             try:
-                import jwt
                 # Decode without verification (just to get email for logging)
                 decoded_token = jwt.decode(credentials.id_token, options={"verify_signature": False})
                 token_email = decoded_token.get("email")
