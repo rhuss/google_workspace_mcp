@@ -309,7 +309,7 @@ def _extract_oauth21_user_email(authenticated_user: Optional[str], func_name: st
 def _extract_oauth20_user_email(
     args: tuple,
     kwargs: dict,
-    wrapper_sig: inspect.Signature
+    target_sig: inspect.Signature
 ) -> str:
     """
     Extract user email for OAuth 2.0 mode from function arguments.
@@ -317,7 +317,7 @@ def _extract_oauth20_user_email(
     Args:
         args: Positional arguments passed to wrapper
         kwargs: Keyword arguments passed to wrapper
-        wrapper_sig: Function signature for parameter binding
+        target_sig: Function signature for parameter binding
 
     Returns:
         User email string
@@ -325,7 +325,7 @@ def _extract_oauth20_user_email(
     Raises:
         Exception: If user_google_email parameter not found
     """
-    bound_args = wrapper_sig.bind(*args, **kwargs)
+    bound_args = target_sig.bind(*args, **kwargs)
     bound_args.apply_defaults()
 
     user_google_email = bound_args.arguments.get("user_google_email")
@@ -533,6 +533,7 @@ def require_google_service(
         else:
             # Only remove 'service' parameter for OAuth 2.0 mode
             wrapper_sig = original_sig.replace(parameters=params[1:])
+        oauth20_sig = original_sig.replace(parameters=params[1:])
 
         @wraps(func)
         async def wrapper(*args, **kwargs):
@@ -543,12 +544,13 @@ def require_google_service(
             authenticated_user, auth_method, mcp_session_id = _get_auth_context(
                 func.__name__
             )
+            oauth21_enabled = is_oauth21_enabled()
 
             # Extract user_google_email based on OAuth mode
-            if is_oauth21_enabled():
+            if oauth21_enabled:
                 user_google_email = _extract_oauth21_user_email(authenticated_user, func.__name__)
             else:
-                user_google_email = _extract_oauth20_user_email(args, kwargs, wrapper_sig)
+                user_google_email = _extract_oauth20_user_email(args, kwargs, oauth20_sig)
 
             # Get service configuration from the decorator's arguments
             if service_type not in SERVICE_CONFIGS:
@@ -576,15 +578,15 @@ def require_google_service(
 
                 # In OAuth 2.1 mode, user_google_email is already set to authenticated_user
                 # In OAuth 2.0 mode, we may need to override it
-                if not is_oauth21_enabled():
-                    wrapper_params = list(wrapper_sig.parameters.keys())
+                if not oauth21_enabled:
+                    oauth20_param_names = list(oauth20_sig.parameters.keys())
                     user_google_email, args = _override_oauth21_user_email(
                         use_oauth21,
                         authenticated_user,
                         user_google_email,
                         args,
                         kwargs,
-                        wrapper_params,
+                        oauth20_param_names,
                         tool_name,
                     )
 
@@ -610,7 +612,7 @@ def require_google_service(
 
             try:
                 # In OAuth 2.1 mode, we need to add user_google_email to kwargs since it was removed from signature
-                if is_oauth21_enabled():
+                if oauth21_enabled:
                     kwargs["user_google_email"] = user_google_email
 
                 # Prepend the fetched service object to the original arguments
@@ -678,26 +680,31 @@ def require_multiple_services(service_configs: List[Dict[str, Any]]):
         filtered_params = [
             p
             for p in params
-            if p.name not in service_param_names
+            if (p.name not in service_param_names or p.name == "user_google_email")
             and (not oauth21_enabled_for_signature or p.name != "user_google_email")
         ]
 
         wrapper_sig = original_sig.replace(parameters=filtered_params)
+        oauth20_params = [
+            p for p in params if p.name not in service_param_names or p.name == "user_google_email"
+        ]
+        oauth20_sig = original_sig.replace(parameters=oauth20_params)
 
         @wraps(func)
         async def wrapper(*args, **kwargs):
             # Get authentication context early
             tool_name = func.__name__
             authenticated_user, _, mcp_session_id = _get_auth_context(tool_name)
+            oauth21_enabled = is_oauth21_enabled()
 
             injected_services: Dict[str, Any] = {}
 
             # Extract user_google_email based on OAuth mode
-            if is_oauth21_enabled():
+            if oauth21_enabled:
                 user_google_email = _extract_oauth21_user_email(authenticated_user, tool_name)
             else:
                 # OAuth 2.0 mode: extract from arguments (original logic)
-                user_google_email = _extract_oauth20_user_email(args, kwargs, wrapper_sig)
+                user_google_email = _extract_oauth20_user_email(args, kwargs, oauth20_sig)
 
             # Authenticate all services
             for config in service_configs:
@@ -716,13 +723,11 @@ def require_multiple_services(service_configs: List[Dict[str, Any]]):
 
                 try:
                     # Detect OAuth version (simplified for multiple services)
-                    use_oauth21 = (
-                        is_oauth21_enabled() and authenticated_user is not None
-                    )
+                    use_oauth21 = oauth21_enabled and authenticated_user is not None
 
                     # In OAuth 2.0 mode, we may need to override user_google_email
-                    if not is_oauth21_enabled():
-                        param_names = list(wrapper_sig.parameters.keys())
+                    if not oauth21_enabled:
+                        param_names = list(oauth20_sig.parameters.keys())
                         user_google_email, args = _override_oauth21_user_email(
                             use_oauth21,
                             authenticated_user,
@@ -759,13 +764,20 @@ def require_multiple_services(service_configs: List[Dict[str, Any]]):
             # Call the original function with refresh error handling
             try:
                 # Bind provided arguments against the wrapper signature (which excludes injected services)
-                bound_wrapper_args = wrapper_sig.bind(*args, **kwargs)
+                binding_sig = oauth20_sig if not oauth21_enabled else wrapper_sig
+                bound_wrapper_args = binding_sig.bind(*args, **kwargs)
                 bound_wrapper_args.apply_defaults()
                 call_arguments = dict(bound_wrapper_args.arguments)
 
                 # Inject services and OAuth 2.1 user email back into the call
+                collision_keys = set(call_arguments.keys()) & set(injected_services.keys())
+                if collision_keys:
+                    raise Exception(
+                        f"Injected service(s) with param_name(s) {sorted(collision_keys)} would overwrite user-provided argument(s). "
+                        "Please use distinct parameter names for injected services."
+                    )
                 call_arguments.update(injected_services)
-                if is_oauth21_enabled():
+                if oauth21_enabled:
                     call_arguments["user_google_email"] = user_google_email
 
                 return await func(**call_arguments)
