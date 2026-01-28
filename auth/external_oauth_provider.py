@@ -30,7 +30,6 @@ class ExternalOAuthProvider(GoogleProvider):
 
     This provider handles ya29.* access tokens by calling Google's userinfo API,
     while maintaining compatibility with standard JWT ID tokens.
-
     Unlike the standard GoogleProvider, this acts as a Resource Server only:
     - Does NOT create /authorize, /token, /register endpoints
     - Only advertises Google's authorization server in metadata
@@ -154,7 +153,6 @@ class ExternalOAuthProvider(GoogleProvider):
             resource_name="Google Workspace MCP",
             resource_documentation=None,
         )
-
         logger.info(
             f"ExternalOAuthProvider: Created protected resource routes pointing to {GOOGLE_ISSUER_URL}"
         )
