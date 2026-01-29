@@ -370,9 +370,6 @@ def configure_server_for_http():
                 logger.info(
                     "Protected resource metadata points to Google's authorization server"
                 )
-                logger.info(
-                    "Protected resource metadata points to Google's authorization server"
-                )
             else:
                 # Standard OAuth 2.1 mode: use FastMCP's GoogleProvider
                 provider = GoogleProvider(
