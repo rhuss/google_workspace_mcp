@@ -336,6 +336,7 @@ def _prepare_gmail_message(
                     (filename or "attachment")
                     .replace("\r", "")
                     .replace("\n", "")
+                    .replace("\x00", "")
                 )
 
                 part.add_header(
