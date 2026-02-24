@@ -40,9 +40,7 @@ class AuthInfoMiddleware(Middleware):
         try:
             access_token = get_access_token()
             if access_token:
-                logger.info(
-                    f"[AuthInfoMiddleware] FastMCP access_token found: {type(access_token)}"
-                )
+                logger.info("[AuthInfoMiddleware] FastMCP access_token found")
                 user_email = getattr(access_token, "email", None)
                 if not user_email and hasattr(access_token, "claims"):
                     user_email = access_token.claims.get("email")
