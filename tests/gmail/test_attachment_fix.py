@@ -41,7 +41,7 @@ def test_os_open_with_o_binary_preserves_bytes(tmp_path):
     payload = b"\x89PNG\r\n\x1a\n" + b"\x00" * 50
 
     tmp = str(tmp_path / "test_with_binary.bin")
-    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, 'O_BINARY', 0)
+    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_BINARY", 0)
 
     fd = os.open(tmp, flags, 0o600)
     try:
@@ -59,6 +59,7 @@ def test_os_open_with_o_binary_preserves_bytes(tmp_path):
 def isolated_storage(tmp_path, monkeypatch):
     """Create an AttachmentStorage that writes to a temp directory."""
     import core.attachment_storage as storage_module
+
     monkeypatch.setattr(storage_module, "STORAGE_DIR", tmp_path)
     return storage_module.AttachmentStorage()
 
@@ -68,7 +69,9 @@ def test_save_attachment_uses_binary_mode(isolated_storage):
     payload = b"\x89PNG\r\n\x1a\n" + b"\x00" * 100
     b64_data = base64.urlsafe_b64encode(payload).decode()
 
-    result = isolated_storage.save_attachment(b64_data, filename="test.png", mime_type="image/png")
+    result = isolated_storage.save_attachment(
+        b64_data, filename="test.png", mime_type="image/png"
+    )
 
     with open(result.path, "rb") as f:
         saved_bytes = f.read()
@@ -79,11 +82,14 @@ def test_save_attachment_uses_binary_mode(isolated_storage):
     )
 
 
-@pytest.mark.parametrize("payload", [
-    b"\x89PNG\r\n\x1a\n" + b"\xff" * 200,          # PNG header
-    b"%PDF-1.7\n" + b"\x00" * 200,                   # PDF header
-    bytes(range(256)) * 4,                            # All byte values
-])
+@pytest.mark.parametrize(
+    "payload",
+    [
+        b"\x89PNG\r\n\x1a\n" + b"\xff" * 200,  # PNG header
+        b"%PDF-1.7\n" + b"\x00" * 200,  # PDF header
+        bytes(range(256)) * 4,  # All byte values
+    ],
+)
 def test_save_attachment_preserves_various_binary_formats(isolated_storage, payload):
     """Ensure binary integrity for payloads containing LF/CR bytes."""
     b64_data = base64.urlsafe_b64encode(payload).decode()
