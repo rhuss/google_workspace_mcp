@@ -148,7 +148,21 @@ def filter_server_tools(server):
                     tools_to_remove.add(tool_name)
 
     for tool_name in tools_to_remove:
-        server.local_provider.remove_tool(tool_name)
+        try:
+            server.local_provider.remove_tool(tool_name)
+        except AttributeError:
+            logger.warning(
+                "Failed to remove tool '%s': remove_tool not available on server.local_provider",
+                tool_name,
+            )
+            continue
+        except Exception as exc:
+            logger.warning(
+                "Failed to remove tool '%s': %s",
+                tool_name,
+                exc,
+            )
+            continue
         tools_removed += 1
 
     if tools_removed > 0:

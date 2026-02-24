@@ -552,7 +552,7 @@ async def create_drive_file(
         f"[create_drive_file] Invoked. Email: '{user_google_email}', File Name: {file_name}, Folder ID: {folder_id}, fileUrl: {fileUrl}"
     )
 
-    if not content and not fileUrl and mime_type != FOLDER_MIME_TYPE:
+    if content is None and fileUrl is None and mime_type != FOLDER_MIME_TYPE:
         raise Exception("You must provide either 'content' or 'fileUrl'.")
 
     # Create folder (no content or media_body). Prefer create_drive_folder for new code.
