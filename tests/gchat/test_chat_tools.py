@@ -176,7 +176,7 @@ async def test_search_messages_shows_attachment_indicator(mock_resolve):
         query="report",
     )
 
-    assert "[attachment: report.pdf]" in result
+    assert "[attachment: report.pdf (application/pdf)]" in result
 
 
 # ---------------------------------------------------------------------------
