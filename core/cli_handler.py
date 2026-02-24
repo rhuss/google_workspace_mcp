@@ -20,7 +20,7 @@ import sys
 from typing import Any, Dict, List, Optional
 
 from auth.oauth_config import set_transport_mode
-from core.tool_registry import _get_tool_components
+from core.tool_registry import get_tool_components
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +37,7 @@ def get_registered_tools(server) -> Dict[str, Any]:
     """
     tools = {}
 
-    for name, tool in _get_tool_components(server).items():
+    for name, tool in get_tool_components(server).items():
         tools[name] = {
             "name": name,
             "description": getattr(tool, "description", None)

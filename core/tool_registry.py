@@ -79,7 +79,7 @@ def wrap_server_tool_method(server):
     server.tool = tracking_tool
 
 
-def _get_tool_components(server) -> dict:
+def get_tool_components(server) -> dict:
     """Get tool components dict from server's local_provider.
 
     Returns a dict mapping tool_name -> tool_object for introspection.
@@ -108,7 +108,7 @@ def filter_server_tools(server):
         return
 
     tools_removed = 0
-    tool_components = _get_tool_components(server)
+    tool_components = get_tool_components(server)
 
     read_only_mode = is_read_only_mode()
     allowed_scopes = set(get_all_read_only_scopes()) if read_only_mode else None

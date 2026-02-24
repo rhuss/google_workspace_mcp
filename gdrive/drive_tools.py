@@ -742,7 +742,7 @@ async def create_drive_file(
             raise Exception(
                 f"Unsupported URL scheme '{parsed_url.scheme}'. Only file://, http://, and https:// are supported."
             )
-    elif content:
+    elif content is not None:
         file_data = content.encode("utf-8")
         media = io.BytesIO(file_data)
 
