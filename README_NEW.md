@@ -72,6 +72,7 @@ export OAUTHLIB_INSECURE_TRANSPORT=1  # Development only
 | `search_drive_files` | Core | Search files with Drive query syntax or free text |
 | `get_drive_file_content` | Core | Read content from Docs, Sheets, Office files (.docx, .xlsx, .pptx) |
 | `create_drive_file` | Core | Create files from content or URL (supports file://, http://, https://) |
+| `create_drive_folder` | Core | Create empty folders in Drive or shared drives |
 | `list_drive_items` | Extended | List folder contents with shared drive support |
 | `update_drive_file` | Extended | Update metadata, move between folders, star, trash |
 | `get_drive_file_permissions` | Complete | Check sharing status and permissions |
@@ -97,7 +98,7 @@ export OAUTHLIB_INSECURE_TRANSPORT=1  # Development only
 |------|------|-------------|
 | `get_doc_content` | Core | Extract text from Docs or .docx files (supports tabs) |
 | `create_doc` | Core | Create new documents with optional initial content |
-| `modify_doc_text` | Core | Insert, replace, format text (bold, italic, colors, fonts) |
+| `modify_doc_text` | Core | Insert, replace, format text (bold, italic, colors, fonts, links) |
 | `search_docs` | Extended | Find documents by name |
 | `find_and_replace_doc` | Extended | Global find/replace with case matching |
 | `list_docs_in_folder` | Extended | List Docs in a specific folder |

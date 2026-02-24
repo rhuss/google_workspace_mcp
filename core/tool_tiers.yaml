@@ -27,6 +27,7 @@ drive:
     - get_drive_file_content
     - get_drive_file_download_url
     - create_drive_file
+    - create_drive_folder
     - import_to_google_doc
     - share_drive_file
     - get_drive_shareable_link
@@ -66,6 +67,7 @@ docs:
     - list_docs_in_folder
     - insert_doc_elements
     - update_paragraph_style
+    - get_doc_as_markdown
   complete:
     - insert_doc_image
     - update_doc_headers_footers
@@ -99,8 +101,10 @@ chat:
     - send_message
     - get_messages
     - search_messages
+    - create_reaction
   extended:
     - list_spaces
+    - download_chat_attachment
   complete: []
 
 forms:
