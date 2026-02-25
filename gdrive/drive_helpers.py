@@ -181,6 +181,7 @@ def build_drive_list_params(
     drive_id: Optional[str] = None,
     include_items_from_all_drives: bool = True,
     corpora: Optional[str] = None,
+    page_token: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Helper function to build common list parameters for Drive API calls.
@@ -191,6 +192,7 @@ def build_drive_list_params(
         drive_id: Optional shared drive ID
         include_items_from_all_drives: Whether to include items from all drives
         corpora: Optional corpus specification
+        page_token: Optional page token for pagination (from a previous nextPageToken)
 
     Returns:
         Dictionary of parameters for Drive API list calls
@@ -202,6 +204,9 @@ def build_drive_list_params(
         "supportsAllDrives": True,
         "includeItemsFromAllDrives": include_items_from_all_drives,
     }
+
+    if page_token:
+        list_params["pageToken"] = page_token
 
     if drive_id:
         list_params["driveId"] = drive_id

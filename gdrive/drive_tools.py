@@ -57,6 +57,7 @@ async def search_drive_files(
     user_google_email: str,
     query: str,
     page_size: int = 10,
+    page_token: Optional[str] = None,
     drive_id: Optional[str] = None,
     include_items_from_all_drives: bool = True,
     corpora: Optional[str] = None,
@@ -68,6 +69,7 @@ async def search_drive_files(
         user_google_email (str): The user's Google email address. Required.
         query (str): The search query string. Supports Google Drive search operators.
         page_size (int): The maximum number of files to return. Defaults to 10.
+        page_token (Optional[str]): Page token from a previous response's nextPageToken to retrieve the next page of results.
         drive_id (Optional[str]): ID of the shared drive to search. If None, behavior depends on `corpora` and `include_items_from_all_drives`.
         include_items_from_all_drives (bool): Whether shared drive items should be included in results. Defaults to True. This is effective when not specifying a `drive_id`.
         corpora (Optional[str]): Bodies of items to query (e.g., 'user', 'domain', 'drive', 'allDrives').
@@ -76,6 +78,7 @@ async def search_drive_files(
 
     Returns:
         str: A formatted list of found files/folders with their details (ID, name, type, size, modified time, link).
+             Includes a nextPageToken line when more results are available.
     """
     logger.info(
         f"[search_drive_files] Invoked. Email: '{user_google_email}', Query: '{query}'"
@@ -104,6 +107,7 @@ async def search_drive_files(
         drive_id=drive_id,
         include_items_from_all_drives=include_items_from_all_drives,
         corpora=corpora,
+        page_token=page_token,
     )
 
     results = await asyncio.to_thread(service.files().list(**list_params).execute)
@@ -111,9 +115,11 @@ async def search_drive_files(
     if not files:
         return f"No files found for '{query}'."
 
-    formatted_files_text_parts = [
-        f"Found {len(files)} files for {user_google_email} matching '{query}':"
-    ]
+    next_token = results.get("nextPageToken")
+    header = f"Found {len(files)} files for {user_google_email} matching '{query}':"
+    if next_token:
+        header += f"\nnextPageToken: {next_token}"
+    formatted_files_text_parts = [header]
     for item in files:
         size_str = f", Size: {item.get('size', 'N/A')}" if "size" in item else ""
         formatted_files_text_parts.append(
@@ -411,6 +417,7 @@ async def list_drive_items(
     user_google_email: str,
     folder_id: str = "root",
     page_size: int = 100,
+    page_token: Optional[str] = None,
     drive_id: Optional[str] = None,
     include_items_from_all_drives: bool = True,
     corpora: Optional[str] = None,
@@ -424,12 +431,14 @@ async def list_drive_items(
         user_google_email (str): The user's Google email address. Required.
         folder_id (str): The ID of the Google Drive folder. Defaults to 'root'. For a shared drive, this can be the shared drive's ID to list its root, or a folder ID within that shared drive.
         page_size (int): The maximum number of items to return. Defaults to 100.
+        page_token (Optional[str]): Page token from a previous response's nextPageToken to retrieve the next page of results.
         drive_id (Optional[str]): ID of the shared drive. If provided, the listing is scoped to this drive.
         include_items_from_all_drives (bool): Whether items from all accessible shared drives should be included if `drive_id` is not set. Defaults to True.
         corpora (Optional[str]): Corpus to query ('user', 'drive', 'allDrives'). If `drive_id` is set and `corpora` is None, 'drive' is used. If None and no `drive_id`, API defaults apply.
 
     Returns:
         str: A formatted list of files/folders in the specified folder.
+             Includes a nextPageToken line when more results are available.
     """
     logger.info(
         f"[list_drive_items] Invoked. Email: '{user_google_email}', Folder ID: '{folder_id}'"
@@ -444,6 +453,7 @@ async def list_drive_items(
         drive_id=drive_id,
         include_items_from_all_drives=include_items_from_all_drives,
         corpora=corpora,
+        page_token=page_token,
     )
 
     results = await asyncio.to_thread(service.files().list(**list_params).execute)
@@ -451,9 +461,11 @@ async def list_drive_items(
     if not files:
         return f"No items found in folder '{folder_id}'."
 
-    formatted_items_text_parts = [
-        f"Found {len(files)} items in folder '{folder_id}' for {user_google_email}:"
-    ]
+    next_token = results.get("nextPageToken")
+    header = f"Found {len(files)} items in folder '{folder_id}' for {user_google_email}:"
+    if next_token:
+        header += f"\nnextPageToken: {next_token}"
+    formatted_items_text_parts = [header]
     for item in files:
         size_str = f", Size: {item.get('size', 'N/A')}" if "size" in item else ""
         formatted_items_text_parts.append(
