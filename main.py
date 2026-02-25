@@ -176,9 +176,10 @@ def main():
 
     # Validate mutually exclusive flags
     if args.permissions and args.read_only:
-        safe_print(
+        print(
             "Error: --permissions and --read-only are mutually exclusive. "
-            "Use service:readonly within --permissions instead."
+            "Use service:readonly within --permissions instead.",
+            file=sys.stderr,
         )
         sys.exit(1)
 
