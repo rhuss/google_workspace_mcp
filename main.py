@@ -296,7 +296,7 @@ def main():
         try:
             perms = parse_permissions_arg(args.permissions)
         except ValueError as e:
-            safe_print(f"❌ {e}")
+            print(f"Error: {e}", file=sys.stderr)
             sys.exit(1)
         set_permissions(perms)
         # Permissions implicitly defines which services to load
