@@ -155,12 +155,32 @@ def main():
         action="store_true",
         help="Run in read-only mode - requests only read-only scopes and disables tools requiring write permissions",
     )
+    parser.add_argument(
+        "--permissions",
+        nargs="+",
+        metavar="SERVICE:LEVEL",
+        help=(
+            "Granular per-service permission levels. Format: service:level. "
+            "Example: --permissions gmail:organize drive:readonly. "
+            "Gmail levels: readonly, organize, drafts, send, full (cumulative). "
+            "Other services: readonly, full. "
+            "Mutually exclusive with --read-only."
+        ),
+    )
     args = parser.parse_args()
 
     # Clean up CLI args - argparse.REMAINDER may include leading dashes from first arg
     if args.cli is not None:
         # Filter out empty strings that might appear
         args.cli = [a for a in args.cli if a]
+
+    # Validate mutually exclusive flags
+    if args.permissions and args.read_only:
+        safe_print(
+            "Error: --permissions and --read-only are mutually exclusive. "
+            "Use service:readonly within --permissions instead."
+        )
+        sys.exit(1)
 
     # Set port and base URI once for reuse throughout the function
     port = int(os.getenv("PORT", os.getenv("WORKSPACE_MCP_PORT", 8000)))
@@ -184,6 +204,8 @@ def main():
     safe_print(f"   👤 Mode: {'Single-user' if args.single_user else 'Multi-user'}")
     if args.read_only:
         safe_print("   🔒 Read-Only: Enabled")
+    if args.permissions:
+        safe_print("   🔒 Permissions: Granular mode")
     safe_print(f"   🐍 Python: {sys.version.split()[0]}")
     safe_print("")
 
@@ -265,7 +287,32 @@ def main():
     }
 
     # Determine which tools to import based on arguments
-    if args.tool_tier is not None:
+    perms = None
+    if args.permissions:
+        # Granular permissions mode — parse and activate before tool selection
+        from auth.permissions import parse_permissions_arg, set_permissions
+
+        try:
+            perms = parse_permissions_arg(args.permissions)
+        except ValueError as e:
+            safe_print(f"❌ {e}")
+            sys.exit(1)
+        set_permissions(perms)
+        # Permissions implicitly defines which services to load
+        tools_to_import = list(perms.keys())
+        set_enabled_tool_names(None)
+
+        if args.tool_tier is not None:
+            # Combine with tier filtering within the permission-selected services
+            try:
+                tier_tools, _ = resolve_tools_from_tier(
+                    args.tool_tier, tools_to_import
+                )
+                set_enabled_tool_names(set(tier_tools))
+            except Exception as e:
+                safe_print(f"❌ Error loading tools for tier '{args.tool_tier}': {e}")
+                sys.exit(1)
+    elif args.tool_tier is not None:
         # Use tier-based tool selection, optionally filtered by services
         try:
             tier_tools, suggested_services = resolve_tools_from_tier(
@@ -314,6 +361,11 @@ def main():
         except ModuleNotFoundError as exc:
             logger.error("Failed to import tool '%s': %s", tool, exc, exc_info=True)
             safe_print(f"   ⚠️ Failed to load {tool.title()} tool module ({exc}).")
+
+    if perms:
+        safe_print("🔒 Permission Levels:")
+        for svc, lvl in sorted(perms.items()):
+            safe_print(f"   {tool_icons.get(svc, '  ')} {svc}: {lvl}")
     safe_print("")
 
     # Filter tools based on tier configuration (if tier-based loading is enabled)
