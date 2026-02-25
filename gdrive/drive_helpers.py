@@ -232,6 +232,10 @@ FILE_TYPE_MIME_MAP: Dict[str, str] = {
     "drawing": "application/vnd.google-apps.drawing",
     "pdf": "application/pdf",
     "shortcut": "application/vnd.google-apps.shortcut",
+    "script": "application/vnd.google-apps.script",
+    "site": "application/vnd.google-apps.site",
+    "jam": "application/vnd.google-apps.jam",
+    "jamboard": "application/vnd.google-apps.jam",
 }
 
 
