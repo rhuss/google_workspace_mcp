@@ -217,6 +217,52 @@ def build_drive_list_params(
 
 SHORTCUT_MIME_TYPE = "application/vnd.google-apps.shortcut"
 FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"
+
+# Mapping from friendly type names to Google Drive MIME types.
+# Raw MIME type strings (containing '/') are always accepted as-is.
+FILE_TYPE_MIME_MAP: Dict[str, str] = {
+    "folder": "application/vnd.google-apps.folder",
+    "document": "application/vnd.google-apps.document",
+    "doc": "application/vnd.google-apps.document",
+    "spreadsheet": "application/vnd.google-apps.spreadsheet",
+    "sheet": "application/vnd.google-apps.spreadsheet",
+    "presentation": "application/vnd.google-apps.presentation",
+    "slides": "application/vnd.google-apps.presentation",
+    "form": "application/vnd.google-apps.form",
+    "drawing": "application/vnd.google-apps.drawing",
+    "pdf": "application/pdf",
+    "shortcut": "application/vnd.google-apps.shortcut",
+}
+
+
+def resolve_file_type_mime(file_type: str) -> str:
+    """
+    Resolve a friendly file type name or raw MIME type string to a Drive MIME type.
+
+    If `file_type` contains '/' it is returned as-is (treated as a raw MIME type).
+    Otherwise it is looked up in FILE_TYPE_MIME_MAP.
+
+    Args:
+        file_type: A friendly name ('folder', 'document', 'pdf', …) or a raw MIME
+                   type string ('application/vnd.google-apps.document', …).
+
+    Returns:
+        str: The resolved MIME type string.
+
+    Raises:
+        ValueError: If the value is not a recognised friendly name and contains no '/'.
+    """
+    if "/" in file_type:
+        return file_type
+    lower = file_type.lower()
+    if lower not in FILE_TYPE_MIME_MAP:
+        valid = ", ".join(sorted(FILE_TYPE_MIME_MAP.keys()))
+        raise ValueError(
+            f"Unknown file_type '{file_type}'. Pass a MIME type directly (e.g. "
+            f"'application/pdf') or use one of the friendly names: {valid}"
+        )
+    return FILE_TYPE_MIME_MAP[lower]
+
 BASE_SHORTCUT_FIELDS = (
     "id, mimeType, parents, shortcutDetails(targetId, targetMimeType)"
 )
