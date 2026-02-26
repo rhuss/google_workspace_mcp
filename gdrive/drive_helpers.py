@@ -218,6 +218,9 @@ def build_drive_list_params(
 SHORTCUT_MIME_TYPE = "application/vnd.google-apps.shortcut"
 FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"
 
+# RFC 6838 token-style MIME type validation (safe for Drive query interpolation).
+MIME_TYPE_PATTERN = re.compile(r"^[A-Za-z0-9!#$&^_.+-]+/[A-Za-z0-9!#$&^_.+-]+$")
+
 # Mapping from friendly type names to Google Drive MIME types.
 # Raw MIME type strings (containing '/') are always accepted as-is.
 FILE_TYPE_MIME_MAP: Dict[str, str] = {
@@ -256,9 +259,14 @@ def resolve_file_type_mime(file_type: str) -> str:
     Raises:
         ValueError: If the value is not a recognised friendly name and contains no '/'.
     """
-    if "/" in file_type:
-        return file_type
-    lower = file_type.lower()
+    normalized = file_type.strip()
+    if "/" in normalized:
+        if not MIME_TYPE_PATTERN.fullmatch(normalized):
+            raise ValueError(
+                f"Invalid MIME type '{file_type}'. Expected format like 'application/pdf'."
+            )
+        return normalized
+    lower = normalized.lower()
     if lower not in FILE_TYPE_MIME_MAP:
         valid = ", ".join(sorted(FILE_TYPE_MIME_MAP.keys()))
         raise ValueError(

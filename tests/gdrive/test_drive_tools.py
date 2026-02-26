@@ -55,9 +55,10 @@ from gdrive.drive_tools import list_drive_items, search_drive_files
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _unwrap(tool):
-    """Unwrap a FunctionTool + decorator chain to the original async function."""
-    fn = tool.fn
+def _unwrap(fn):
+    """Unwrap a FunctionTool or plain-function decorator chain to the original async function."""
+    if hasattr(fn, "fn"):
+        fn = fn.fn  # FunctionTool wrapper (some server versions)
     while hasattr(fn, "__wrapped__"):
         fn = fn.__wrapped__
     return fn
@@ -396,3 +397,49 @@ async def test_list_items_file_type_unknown_raises(mock_resolve_folder):
             folder_id="root",
             file_type="unknowntype",
         )
+
+
+# ---------------------------------------------------------------------------
+# OR-precedence grouping
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_search_or_query_is_grouped_before_mime_filter():
+    """An OR structured query is wrapped in parentheses so the MIME filter binds correctly."""
+    mock_service = Mock()
+    mock_service.files().list().execute.return_value = {"files": []}
+
+    await _unwrap(search_drive_files)(
+        service=mock_service,
+        user_google_email="user@example.com",
+        query="name contains 'a' or name contains 'b'",
+        file_type="document",
+    )
+
+    q = mock_service.files.return_value.list.call_args.kwargs["q"]
+    # Without grouping this would be:  name contains 'a' or name contains 'b' and mimeType = ...
+    # The 'and' would only bind to the second term, leaking the first term through unfiltered.
+    assert q.startswith("(")
+    assert "name contains 'a' or name contains 'b'" in q
+    assert ") and mimeType = 'application/vnd.google-apps.document'" in q
+
+
+# ---------------------------------------------------------------------------
+# MIME type validation
+# ---------------------------------------------------------------------------
+
+
+def test_resolve_file_type_mime_invalid_mime_raises():
+    """A raw string with '/' but containing quotes raises ValueError."""
+    from gdrive.drive_helpers import resolve_file_type_mime
+
+    with pytest.raises(ValueError, match="Invalid MIME type"):
+        resolve_file_type_mime("application/pdf' or '1'='1")
+
+
+def test_resolve_file_type_mime_strips_whitespace():
+    """Leading/trailing whitespace is stripped from raw MIME strings."""
+    from gdrive.drive_helpers import resolve_file_type_mime
+
+    assert resolve_file_type_mime("  application/pdf  ") == "application/pdf"

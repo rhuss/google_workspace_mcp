@@ -76,8 +76,10 @@ async def search_drive_files(
                                  If 'drive_id' is specified and 'corpora' is None, it defaults to 'drive'.
                                  Otherwise, Drive API default behavior applies. Prefer 'user' or 'drive' over 'allDrives' for efficiency.
         file_type (Optional[str]): Restrict results to a specific file type. Accepts a friendly
-                                   name ('folder', 'document', 'doc', 'spreadsheet', 'sheet', 'presentation', 'slides', 'form', 'drawing', 'pdf', 'shortcut') or 
-                                   any raw MIME type string (e.g. 'application/pdf'). Defaults to None (all types).
+                                   name ('folder', 'document'/'doc', 'spreadsheet'/'sheet',
+                                   'presentation'/'slides', 'form', 'drawing', 'pdf', 'shortcut',
+                                   'script', 'site', 'jam'/'jamboard') or any raw MIME type
+                                   string (e.g. 'application/pdf'). Defaults to None (all types).
 
     Returns:
         str: A formatted list of found files/folders with their details (ID, name, type, size, modified time, link).
@@ -105,7 +107,7 @@ async def search_drive_files(
 
     if file_type is not None:
         mime = resolve_file_type_mime(file_type)
-        final_query += f" and mimeType = '{mime}'"
+        final_query = f"({final_query}) and mimeType = '{mime}'"
         logger.info(f"[search_drive_files] Added mimeType filter: '{mime}'")
 
     list_params = build_drive_list_params(
@@ -439,10 +441,10 @@ async def list_drive_items(
         include_items_from_all_drives (bool): Whether items from all accessible shared drives should be included if `drive_id` is not set. Defaults to True.
         corpora (Optional[str]): Corpus to query ('user', 'drive', 'allDrives'). If `drive_id` is set and `corpora` is None, 'drive' is used. If None and no `drive_id`, API defaults apply.
         file_type (Optional[str]): Restrict results to a specific file type. Accepts a friendly
-                                   name ('folder', 'document', 'doc', 'spreadsheet', 'sheet',
-                                   'presentation', 'slides', 'form', 'drawing', 'pdf',
-                                   'shortcut') or any raw MIME type string
-                                   (e.g. 'application/pdf'). Defaults to None (all types).
+                                   name ('folder', 'document'/'doc', 'spreadsheet'/'sheet',
+                                   'presentation'/'slides', 'form', 'drawing', 'pdf', 'shortcut',
+                                   'script', 'site', 'jam'/'jamboard') or any raw MIME type
+                                   string (e.g. 'application/pdf'). Defaults to None (all types).
 
     Returns:
         str: A formatted list of files/folders in the specified folder.
@@ -456,7 +458,7 @@ async def list_drive_items(
 
     if file_type is not None:
         mime = resolve_file_type_mime(file_type)
-        final_query += f" and mimeType = '{mime}'"
+        final_query = f"({final_query}) and mimeType = '{mime}'"
         logger.info(f"[list_drive_items] Added mimeType filter: '{mime}'")
 
     list_params = build_drive_list_params(
