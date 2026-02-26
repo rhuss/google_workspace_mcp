@@ -117,14 +117,14 @@ async def search_drive_files(
 
     next_token = results.get("nextPageToken")
     header = f"Found {len(files)} files for {user_google_email} matching '{query}':"
-    if next_token:
-        header += f"\nnextPageToken: {next_token}"
     formatted_files_text_parts = [header]
     for item in files:
         size_str = f", Size: {item.get('size', 'N/A')}" if "size" in item else ""
         formatted_files_text_parts.append(
             f'- Name: "{item["name"]}" (ID: {item["id"]}, Type: {item["mimeType"]}{size_str}, Modified: {item.get("modifiedTime", "N/A")}) Link: {item.get("webViewLink", "#")}'
         )
+    if next_token:
+        formatted_files_text_parts.append(f"nextPageToken: {next_token}")
     text_output = "\n".join(formatted_files_text_parts)
     return text_output
 
@@ -463,14 +463,14 @@ async def list_drive_items(
 
     next_token = results.get("nextPageToken")
     header = f"Found {len(files)} items in folder '{folder_id}' for {user_google_email}:"
-    if next_token:
-        header += f"\nnextPageToken: {next_token}"
     formatted_items_text_parts = [header]
     for item in files:
         size_str = f", Size: {item.get('size', 'N/A')}" if "size" in item else ""
         formatted_items_text_parts.append(
             f'- Name: "{item["name"]}" (ID: {item["id"]}, Type: {item["mimeType"]}{size_str}, Modified: {item.get("modifiedTime", "N/A")}) Link: {item.get("webViewLink", "#")}'
         )
+    if next_token:
+        formatted_items_text_parts.append(f"nextPageToken: {next_token}")
     text_output = "\n".join(formatted_items_text_parts)
     return text_output
 

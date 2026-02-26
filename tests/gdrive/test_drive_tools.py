@@ -57,7 +57,7 @@ async def test_search_drive_files_page_token_passed_to_api():
 
 @pytest.mark.asyncio
 async def test_search_drive_files_next_page_token_in_output():
-    """nextPageToken from the API response is appended to the output."""
+    """nextPageToken from the API response is appended at the end of the output."""
     mock_service = Mock()
     mock_service.files().list().execute.return_value = {
         "files": [
@@ -78,7 +78,7 @@ async def test_search_drive_files_next_page_token_in_output():
         query="notes",
     )
 
-    assert "nextPageToken: next_tok_xyz" in result
+    assert result.endswith("nextPageToken: next_tok_xyz")
 
 
 @pytest.mark.asyncio
@@ -143,7 +143,7 @@ async def test_list_drive_items_page_token_passed_to_api(mock_resolve_folder):
 @pytest.mark.asyncio
 @patch("gdrive.drive_tools.resolve_folder_id", new_callable=AsyncMock)
 async def test_list_drive_items_next_page_token_in_output(mock_resolve_folder):
-    """nextPageToken from the API response is appended to the output."""
+    """nextPageToken from the API response is appended at the end of the output."""
     mock_resolve_folder.return_value = "root"
     mock_service = Mock()
     mock_service.files().list().execute.return_value = {
@@ -164,7 +164,7 @@ async def test_list_drive_items_next_page_token_in_output(mock_resolve_folder):
         user_google_email="user@example.com",
     )
 
-    assert "nextPageToken: next_list_tok" in result
+    assert result.endswith("nextPageToken: next_list_tok")
 
 
 @pytest.mark.asyncio
