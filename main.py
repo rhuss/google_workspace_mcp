@@ -311,7 +311,7 @@ def main():
                 )
                 set_enabled_tool_names(set(tier_tools))
             except Exception as e:
-                safe_print(f"❌ Error loading tools for tier '{args.tool_tier}': {e}")
+                print(f"Error loading tools for tier '{args.tool_tier}': {e}", file=sys.stderr)
                 sys.exit(1)
     elif args.tool_tier is not None:
         # Use tier-based tool selection, optionally filtered by services

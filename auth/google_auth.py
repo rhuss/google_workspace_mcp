@@ -524,11 +524,13 @@ def handle_auth_callback(
             credentials = Credentials(
                 token=credentials.token,
                 refresh_token=credentials.refresh_token,
+                id_token=getattr(credentials, "id_token", None),
                 token_uri=credentials.token_uri,
                 client_id=credentials.client_id,
                 client_secret=credentials.client_secret,
                 scopes=list(granted),
                 expiry=credentials.expiry,
+                quota_project_id=getattr(credentials, "quota_project_id", None),
             )
 
         # Get user info to determine user_id (using email here)
