@@ -147,16 +147,7 @@ uv run main.py --tools gmail drive
 
 </details>
 
-### 1. One-Click Claude Desktop Install (Recommended)
 
-1. **Download:** Grab the latest `google_workspace_mcp.dxt` from the “Releases” page
-2. **Install:** Double-click the file – Claude Desktop opens and prompts you to **Install**
-3. **Configure:** In Claude Desktop → **Settings → Extensions → Google Workspace MCP**, paste your Google OAuth credentials
-4. **Use it:** Start a new Claude chat and call any Google Workspace tool
-
->
-**Why DXT?**
-> Desktop Extensions (`.dxt`) bundle the server, dependencies, and manifest so users go from download → working MCP in **one click** – no terminal, no JSON editing, no version conflicts.
 
 #### Required Configuration
 <details>
@@ -191,6 +182,17 @@ Claude Desktop stores these securely in the OS keychain; set them once in the ex
 </details>
 
 ---
+
+### One-Click Claude Desktop Install (Claude Desktop Only, Stdio, Single User)
+
+1. **Download:** Grab the latest `google_workspace_mcp.dxt` from the “Releases” page
+2. **Install:** Double-click the file – Claude Desktop opens and prompts you to **Install**
+3. **Configure:** In Claude Desktop → **Settings → Extensions → Google Workspace MCP**, paste your Google OAuth credentials
+4. **Use it:** Start a new Claude chat and call any Google Workspace tool
+
+>
+**Why DXT?**
+> Desktop Extensions (`.dxt`) bundle the server, dependencies, and manifest so users go from download → working MCP in **one click** – no terminal, no JSON editing, no version conflicts.
 
 <div align="center">
   <video width="832" src="https://github.com/user-attachments/assets/83cca4b3-5e94-448b-acb3-6e3a27341d3a"></video>

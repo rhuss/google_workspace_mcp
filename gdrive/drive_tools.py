@@ -61,6 +61,7 @@ async def search_drive_files(
     drive_id: Optional[str] = None,
     include_items_from_all_drives: bool = True,
     corpora: Optional[str] = None,
+    detailed: bool = True,
 ) -> str:
     """
     Searches for files and folders within a user's Google Drive, including shared drives.
@@ -75,10 +76,12 @@ async def search_drive_files(
         corpora (Optional[str]): Bodies of items to query (e.g., 'user', 'domain', 'drive', 'allDrives').
                                  If 'drive_id' is specified and 'corpora' is None, it defaults to 'drive'.
                                  Otherwise, Drive API default behavior applies. Prefer 'user' or 'drive' over 'allDrives' for efficiency.
+        detailed (bool): Whether to include size, modified time, and link in results. Defaults to True.
 
     Returns:
         str: A formatted list of found files/folders with their details (ID, name, type, size, modified time, link).
              Includes a nextPageToken line when more results are available.
+        str: A formatted list of found files/folders with their details (ID, name, type, and optionally size, modified time, link).
     """
     logger.info(
         f"[search_drive_files] Invoked. Email: '{user_google_email}', Query: '{query}'"
@@ -108,6 +111,7 @@ async def search_drive_files(
         include_items_from_all_drives=include_items_from_all_drives,
         corpora=corpora,
         page_token=page_token,
+        detailed=detailed,
     )
 
     results = await asyncio.to_thread(service.files().list(**list_params).execute)
@@ -125,6 +129,15 @@ async def search_drive_files(
         )
     if next_token:
         formatted_files_text_parts.append(f"nextPageToken: {next_token}")
+        if detailed:
+            size_str = f", Size: {item.get('size', 'N/A')}" if "size" in item else ""
+            formatted_files_text_parts.append(
+                f'- Name: "{item["name"]}" (ID: {item["id"]}, Type: {item["mimeType"]}{size_str}, Modified: {item.get("modifiedTime", "N/A")}) Link: {item.get("webViewLink", "#")}'
+            )
+        else:
+            formatted_files_text_parts.append(
+                f'- Name: "{item["name"]}" (ID: {item["id"]}, Type: {item["mimeType"]})'
+            )
     text_output = "\n".join(formatted_files_text_parts)
     return text_output
 
@@ -421,6 +434,7 @@ async def list_drive_items(
     drive_id: Optional[str] = None,
     include_items_from_all_drives: bool = True,
     corpora: Optional[str] = None,
+    detailed: bool = True,
 ) -> str:
     """
     Lists files and folders, supporting shared drives.
@@ -435,6 +449,7 @@ async def list_drive_items(
         drive_id (Optional[str]): ID of the shared drive. If provided, the listing is scoped to this drive.
         include_items_from_all_drives (bool): Whether items from all accessible shared drives should be included if `drive_id` is not set. Defaults to True.
         corpora (Optional[str]): Corpus to query ('user', 'drive', 'allDrives'). If `drive_id` is set and `corpora` is None, 'drive' is used. If None and no `drive_id`, API defaults apply.
+        detailed (bool): Whether to include size, modified time, and link in results. Defaults to True.
 
     Returns:
         str: A formatted list of files/folders in the specified folder.
@@ -454,6 +469,7 @@ async def list_drive_items(
         include_items_from_all_drives=include_items_from_all_drives,
         corpora=corpora,
         page_token=page_token,
+        detailed=detailed,
     )
 
     results = await asyncio.to_thread(service.files().list(**list_params).execute)
@@ -471,6 +487,15 @@ async def list_drive_items(
         )
     if next_token:
         formatted_items_text_parts.append(f"nextPageToken: {next_token}")
+        if detailed:
+            size_str = f", Size: {item.get('size', 'N/A')}" if "size" in item else ""
+            formatted_items_text_parts.append(
+                f'- Name: "{item["name"]}" (ID: {item["id"]}, Type: {item["mimeType"]}{size_str}, Modified: {item.get("modifiedTime", "N/A")}) Link: {item.get("webViewLink", "#")}'
+            )
+        else:
+            formatted_items_text_parts.append(
+                f'- Name: "{item["name"]}" (ID: {item["id"]}, Type: {item["mimeType"]})'
+            )
     text_output = "\n".join(formatted_items_text_parts)
     return text_output
 
