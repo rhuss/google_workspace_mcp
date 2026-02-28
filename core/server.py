@@ -1,10 +1,12 @@
+import hashlib
 import logging
 import os
-from typing import List, Optional
+from typing import Callable, List, Optional
 from importlib import metadata
 
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from starlette.applications import Starlette
+from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.middleware import Middleware
 
@@ -38,6 +40,38 @@ _legacy_callback_registered = False
 session_middleware = Middleware(MCPSessionMiddleware)
 
 
+def _compute_scope_fingerprint() -> str:
+    """Compute a short hash of the current scope configuration for cache-busting."""
+    scopes_str = ",".join(sorted(get_current_scopes()))
+    return hashlib.sha256(scopes_str.encode()).hexdigest()[:12]
+
+
+class OAuthMetadataCacheBustMiddleware(BaseHTTPMiddleware):
+    """Override the upstream 1-hour Cache-Control on OAuth discovery endpoints.
+
+    The MCP SDK sets ``Cache-Control: public, max-age=3600`` on the
+    ``.well-known`` metadata responses.  When the server is restarted with a
+    different ``--permissions`` or ``--read-only`` configuration, browsers /
+    MCP clients can serve stale discovery docs that advertise the wrong
+    scopes, causing the OAuth flow to silently fail.
+
+    This middleware replaces the cache header with ``no-store`` and adds an
+    ``ETag`` derived from the current scope set so that intermediary caches
+    that *do* store the response will still invalidate on config change.
+    """
+
+    def __init__(self, app: Starlette, scope_fingerprint: str) -> None:
+        super().__init__(app)
+        self._etag = f'"{scope_fingerprint}"'
+
+    async def dispatch(self, request: Request, call_next: Callable):
+        response = await call_next(request)
+        if request.url.path.startswith("/.well-known/"):
+            response.headers["Cache-Control"] = "no-store, must-revalidate"
+            response.headers["ETag"] = self._etag
+        return response
+
+
 # Custom FastMCP that adds secure middleware stack for OAuth 2.1
 class SecureFastMCP(FastMCP):
     def http_app(self, **kwargs) -> "Starlette":
@@ -47,6 +81,13 @@ class SecureFastMCP(FastMCP):
         # Add middleware in order (first added = outermost layer)
         # Session Management - extracts session info for MCP context
         app.user_middleware.insert(0, session_middleware)
+
+        # Prevent browser caching of OAuth discovery endpoints across config changes
+        fingerprint = _compute_scope_fingerprint()
+        app.user_middleware.insert(
+            0,
+            Middleware(OAuthMetadataCacheBustMiddleware, scope_fingerprint=fingerprint),
+        )
 
         # Rebuild middleware stack
         app.middleware_stack = app.build_middleware_stack()

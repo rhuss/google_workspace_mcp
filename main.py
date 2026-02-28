@@ -108,6 +108,13 @@ def resolve_permissions_mode_selection(
     return tier_services, set(tier_tools)
 
 
+def narrow_permissions_to_services(
+    permissions: dict[str, str], services: list[str]
+) -> dict[str, str]:
+    """Restrict permission entries to the provided service list order."""
+    return {service: permissions[service] for service in services if service in permissions}
+
+
 def main():
     """
     Main entry point for the Google Workspace MCP server.
@@ -196,6 +203,13 @@ def main():
         print(
             "Error: --permissions and --read-only are mutually exclusive. "
             "Use service:readonly within --permissions instead.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    if args.permissions and args.tools is not None:
+        print(
+            "Error: --permissions and --tools cannot be combined. "
+            "Select services via --permissions (optionally with --tool-tier).",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -315,7 +329,6 @@ def main():
         except ValueError as e:
             print(f"Error: {e}", file=sys.stderr)
             sys.exit(1)
-        set_permissions(perms)
         # Permissions implicitly defines which services to load
         tools_to_import = list(perms.keys())
         set_enabled_tool_names(None)
@@ -327,12 +340,14 @@ def main():
                     tools_to_import, args.tool_tier
                 )
                 set_enabled_tool_names(tier_tool_filter)
+                perms = narrow_permissions_to_services(perms, tools_to_import)
             except Exception as e:
                 print(
                     f"Error loading tools for tier '{args.tool_tier}': {e}",
                     file=sys.stderr,
                 )
                 sys.exit(1)
+        set_permissions(perms)
     elif args.tool_tier is not None:
         # Use tier-based tool selection, optionally filtered by services
         try:
