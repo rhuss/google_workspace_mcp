@@ -147,16 +147,7 @@ uv run main.py --tools gmail drive
 
 </details>
 
-### 1. One-Click Claude Desktop Install (Recommended)
 
-1. **Download:** Grab the latest `google_workspace_mcp.dxt` from the “Releases” page
-2. **Install:** Double-click the file – Claude Desktop opens and prompts you to **Install**
-3. **Configure:** In Claude Desktop → **Settings → Extensions → Google Workspace MCP**, paste your Google OAuth credentials
-4. **Use it:** Start a new Claude chat and call any Google Workspace tool
-
->
-**Why DXT?**
-> Desktop Extensions (`.dxt`) bundle the server, dependencies, and manifest so users go from download → working MCP in **one click** – no terminal, no JSON editing, no version conflicts.
 
 #### Required Configuration
 <details>
@@ -191,6 +182,17 @@ Claude Desktop stores these securely in the OS keychain; set them once in the ex
 </details>
 
 ---
+
+### One-Click Claude Desktop Install (Claude Desktop Only, Stdio, Single User)
+
+1. **Download:** Grab the latest `google_workspace_mcp.dxt` from the “Releases” page
+2. **Install:** Double-click the file – Claude Desktop opens and prompts you to **Install**
+3. **Configure:** In Claude Desktop → **Settings → Extensions → Google Workspace MCP**, paste your Google OAuth credentials
+4. **Use it:** Start a new Claude chat and call any Google Workspace tool
+
+>
+**Why DXT?**
+> Desktop Extensions (`.dxt`) bundle the server, dependencies, and manifest so users go from download → working MCP in **one click** – no terminal, no JSON editing, no version conflicts.
 
 <div align="center">
   <video width="832" src="https://github.com/user-attachments/assets/83cca4b3-5e94-448b-acb3-6e3a27341d3a"></video>
@@ -558,6 +560,22 @@ Read-only mode provides secure, restricted access by:
 - Automatically filtering out tools that require write permissions at startup
 - Allowing read operations: list, get, search, and export across all services
 
+**🔐 Granular Permissions**
+```bash
+# Per-service permission levels
+uv run main.py --permissions gmail:organize drive:readonly
+
+# Combine permissions with tier filtering
+uv run main.py --permissions gmail:send drive:full --tool-tier core
+```
+Granular permissions mode provides service-by-service scope control:
+- Format: `service:level` (one entry per service)
+- Gmail levels: `readonly`, `organize`, `drafts`, `send`, `full` (cumulative)
+- Other services currently support: `readonly`, `full`
+- `--permissions` and `--read-only` are mutually exclusive
+- `--permissions` cannot be combined with `--tools`; enabled services are determined by the `--permissions` entries (optionally filtered by `--tool-tier`)
+- With `--tool-tier`, only tier-matched tools are enabled and only services that have tools in the selected tier are imported
+
 **★ Tool Tiers**
 ```bash
 uv run main.py --tool-tier core      # ● Essential tools only
@@ -736,6 +754,9 @@ uv run main.py --tool-tier complete                        # Enable all availabl
 uv run main.py --tools gmail drive --tool-tier core        # Core tools for specific services
 uv run main.py --tools gmail --tool-tier extended          # Extended Gmail functionality only
 uv run main.py --tools docs sheets --tool-tier complete    # Full access to Docs and Sheets
+
+# Combine tier selection with granular permission levels
+uv run main.py --permissions gmail:organize drive:full --tool-tier core
 ```
 
 ## 📋 Credential Configuration
