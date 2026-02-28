@@ -1,13 +1,13 @@
 import hashlib
 import logging
 import os
-from typing import Callable, List, Optional
+from typing import List, Optional
 from importlib import metadata
 
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from starlette.applications import Starlette
-from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
+from starlette.responses import Response
 from starlette.middleware import Middleware
 
 from fastmcp import FastMCP
@@ -46,30 +46,26 @@ def _compute_scope_fingerprint() -> str:
     return hashlib.sha256(scopes_str.encode()).hexdigest()[:12]
 
 
-class OAuthMetadataCacheBustMiddleware(BaseHTTPMiddleware):
-    """Override the upstream 1-hour Cache-Control on OAuth discovery endpoints.
+def _wrap_well_known_endpoint(endpoint, etag: str):
+    """Wrap a well-known metadata endpoint to prevent browser caching.
 
-    The MCP SDK sets ``Cache-Control: public, max-age=3600`` on the
-    ``.well-known`` metadata responses.  When the server is restarted with a
-    different ``--permissions`` or ``--read-only`` configuration, browsers /
-    MCP clients can serve stale discovery docs that advertise the wrong
-    scopes, causing the OAuth flow to silently fail.
+    The MCP SDK hardcodes ``Cache-Control: public, max-age=3600`` on discovery
+    responses.  When the server restarts with different ``--permissions`` or
+    ``--read-only`` flags, browsers / MCP clients serve stale metadata that
+    advertises the wrong scopes, causing OAuth to silently fail.
 
-    This middleware replaces the cache header with ``no-store`` and adds an
-    ``ETag`` derived from the current scope set so that intermediary caches
-    that *do* store the response will still invalidate on config change.
+    The wrapper overrides the header to ``no-store`` and adds an ``ETag``
+    derived from the current scope set so intermediary caches that ignore
+    ``no-store`` still see a fingerprint change.
     """
 
-    def __init__(self, app: Starlette, scope_fingerprint: str) -> None:
-        super().__init__(app)
-        self._etag = f'"{scope_fingerprint}"'
-
-    async def dispatch(self, request: Request, call_next: Callable):
-        response = await call_next(request)
-        if request.url.path.startswith("/.well-known/"):
-            response.headers["Cache-Control"] = "no-store, must-revalidate"
-            response.headers["ETag"] = self._etag
+    async def _no_cache_endpoint(request: Request) -> Response:
+        response = await endpoint(request)
+        response.headers["Cache-Control"] = "no-store, must-revalidate"
+        response.headers["ETag"] = etag
         return response
+
+    return _no_cache_endpoint
 
 
 # Custom FastMCP that adds secure middleware stack for OAuth 2.1
@@ -81,13 +77,6 @@ class SecureFastMCP(FastMCP):
         # Add middleware in order (first added = outermost layer)
         # Session Management - extracts session info for MCP context
         app.user_middleware.insert(0, session_middleware)
-
-        # Prevent browser caching of OAuth discovery endpoints across config changes
-        fingerprint = _compute_scope_fingerprint()
-        app.user_middleware.insert(
-            0,
-            Middleware(OAuthMetadataCacheBustMiddleware, scope_fingerprint=fingerprint),
-        )
 
         # Rebuild middleware stack
         app.middleware_stack = app.build_middleware_stack()
@@ -428,14 +417,18 @@ def configure_server_for_http():
                     "OAuth 2.1 enabled using FastMCP GoogleProvider with protocol-level auth"
                 )
 
-                # Explicitly mount well-known routes from the OAuth provider
-                # These should be auto-mounted but we ensure they're available
+                # Mount well-known routes with cache-busting headers.
+                # The MCP SDK hardcodes Cache-Control: public, max-age=3600
+                # on discovery responses which causes stale-scope bugs when
+                # the server is restarted with a different --permissions config.
                 try:
+                    scope_etag = f'"{_compute_scope_fingerprint()}"'
                     well_known_routes = provider.get_well_known_routes()
                     for route in well_known_routes:
                         logger.info(f"Mounting OAuth well-known route: {route.path}")
+                        wrapped = _wrap_well_known_endpoint(route.endpoint, scope_etag)
                         server.custom_route(route.path, methods=list(route.methods))(
-                            route.endpoint
+                            wrapped
                         )
                 except Exception as e:
                     logger.warning(f"Could not mount well-known routes: {e}")
