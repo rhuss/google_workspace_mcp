@@ -112,7 +112,9 @@ def narrow_permissions_to_services(
     permissions: dict[str, str], services: list[str]
 ) -> dict[str, str]:
     """Restrict permission entries to the provided service list order."""
-    return {service: permissions[service] for service in services if service in permissions}
+    return {
+        service: permissions[service] for service in services if service in permissions
+    }
 
 
 def main():
