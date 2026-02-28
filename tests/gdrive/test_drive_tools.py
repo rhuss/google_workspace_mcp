@@ -708,6 +708,23 @@ async def test_search_file_type_document_alias():
 
 
 @pytest.mark.asyncio
+async def test_search_file_type_plural_alias():
+    """Plural aliases are resolved for friendlier natural-language usage."""
+    mock_service = Mock()
+    mock_service.files().list().execute.return_value = {"files": []}
+
+    await _unwrap(search_drive_files)(
+        service=mock_service,
+        user_google_email="user@example.com",
+        query="project",
+        file_type="folders",
+    )
+
+    call_kwargs = mock_service.files.return_value.list.call_args.kwargs
+    assert "mimeType = 'application/vnd.google-apps.folder'" in call_kwargs["q"]
+
+
+@pytest.mark.asyncio
 async def test_search_file_type_sheet_alias():
     """Alias 'sheet' resolves to the Google Sheets MIME type."""
     mock_service = Mock()
@@ -936,3 +953,18 @@ def test_resolve_file_type_mime_strips_whitespace():
     from gdrive.drive_helpers import resolve_file_type_mime
 
     assert resolve_file_type_mime("  application/pdf  ") == "application/pdf"
+
+
+def test_resolve_file_type_mime_normalizes_case():
+    """Raw MIME types are normalized to lowercase for Drive query consistency."""
+    from gdrive.drive_helpers import resolve_file_type_mime
+
+    assert resolve_file_type_mime("Application/PDF") == "application/pdf"
+
+
+def test_resolve_file_type_mime_empty_raises():
+    """Blank values are rejected with a clear validation error."""
+    from gdrive.drive_helpers import resolve_file_type_mime
+
+    with pytest.raises(ValueError, match="cannot be empty"):
+        resolve_file_type_mime("   ")

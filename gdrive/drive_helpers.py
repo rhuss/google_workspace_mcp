@@ -237,20 +237,34 @@ MIME_TYPE_PATTERN = re.compile(r"^[A-Za-z0-9!#$&^_.+-]+/[A-Za-z0-9!#$&^_.+-]+$")
 # Raw MIME type strings (containing '/') are always accepted as-is.
 FILE_TYPE_MIME_MAP: Dict[str, str] = {
     "folder": "application/vnd.google-apps.folder",
+    "folders": "application/vnd.google-apps.folder",
     "document": "application/vnd.google-apps.document",
     "doc": "application/vnd.google-apps.document",
+    "documents": "application/vnd.google-apps.document",
+    "docs": "application/vnd.google-apps.document",
     "spreadsheet": "application/vnd.google-apps.spreadsheet",
     "sheet": "application/vnd.google-apps.spreadsheet",
+    "spreadsheets": "application/vnd.google-apps.spreadsheet",
+    "sheets": "application/vnd.google-apps.spreadsheet",
     "presentation": "application/vnd.google-apps.presentation",
+    "presentations": "application/vnd.google-apps.presentation",
+    "slide": "application/vnd.google-apps.presentation",
     "slides": "application/vnd.google-apps.presentation",
     "form": "application/vnd.google-apps.form",
+    "forms": "application/vnd.google-apps.form",
     "drawing": "application/vnd.google-apps.drawing",
+    "drawings": "application/vnd.google-apps.drawing",
     "pdf": "application/pdf",
+    "pdfs": "application/pdf",
     "shortcut": "application/vnd.google-apps.shortcut",
+    "shortcuts": "application/vnd.google-apps.shortcut",
     "script": "application/vnd.google-apps.script",
+    "scripts": "application/vnd.google-apps.script",
     "site": "application/vnd.google-apps.site",
+    "sites": "application/vnd.google-apps.site",
     "jam": "application/vnd.google-apps.jam",
     "jamboard": "application/vnd.google-apps.jam",
+    "jamboards": "application/vnd.google-apps.jam",
 }
 
 
@@ -272,12 +286,16 @@ def resolve_file_type_mime(file_type: str) -> str:
         ValueError: If the value is not a recognised friendly name and contains no '/'.
     """
     normalized = file_type.strip()
+    if not normalized:
+        raise ValueError("file_type cannot be empty.")
+
     if "/" in normalized:
-        if not MIME_TYPE_PATTERN.fullmatch(normalized):
+        normalized_mime = normalized.lower()
+        if not MIME_TYPE_PATTERN.fullmatch(normalized_mime):
             raise ValueError(
                 f"Invalid MIME type '{file_type}'. Expected format like 'application/pdf'."
             )
-        return normalized
+        return normalized_mime
     lower = normalized.lower()
     if lower not in FILE_TYPE_MIME_MAP:
         valid = ", ".join(sorted(FILE_TYPE_MIME_MAP.keys()))
