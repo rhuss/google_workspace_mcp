@@ -179,7 +179,7 @@ def get_scopes_for_permission(service: str, level: str) -> List[str]:
             f"Valid levels: {valid}"
         )
 
-    return list(set(cumulative))
+    return sorted(set(cumulative))
 
 
 def get_all_permission_scopes() -> List[str]:

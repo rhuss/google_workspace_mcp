@@ -573,7 +573,8 @@ Granular permissions mode provides service-by-service scope control:
 - Gmail levels: `readonly`, `organize`, `drafts`, `send`, `full` (cumulative)
 - Other services currently support: `readonly`, `full`
 - `--permissions` and `--read-only` are mutually exclusive
-- With `--tool-tier`, only tier-matched tools are enabled and only services with matching tier tools are imported
+- `--permissions` cannot be combined with `--tools`; enabled services are determined by the `--permissions` entries (optionally filtered by `--tool-tier`)
+- With `--tool-tier`, only tier-matched tools are enabled and only services that have tools in the selected tier are imported
 
 **★ Tool Tiers**
 ```bash

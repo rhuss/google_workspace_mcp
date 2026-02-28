@@ -190,7 +190,7 @@ def main():
             "Example: --permissions gmail:organize drive:readonly. "
             "Gmail levels: readonly, organize, drafts, send, full (cumulative). "
             "Other services: readonly, full. "
-            "Mutually exclusive with --read-only."
+            "Mutually exclusive with --read-only and --tools."
         ),
     )
     args = parser.parse_args()
