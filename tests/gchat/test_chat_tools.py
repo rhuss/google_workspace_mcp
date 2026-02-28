@@ -43,7 +43,7 @@ def _make_attachment(
 
 def _unwrap(tool):
     """Unwrap a FunctionTool + decorator chain to the original async function."""
-    fn = tool.fn  # FunctionTool stores the wrapped callable in .fn
+    fn = getattr(tool, "fn", tool)
     while hasattr(fn, "__wrapped__"):
         fn = fn.__wrapped__
     return fn

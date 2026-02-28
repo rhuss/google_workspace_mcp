@@ -495,6 +495,12 @@ def handle_auth_callback(
             )
             os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 
+        # Allow partial scope grants without raising an exception.
+        # When users decline some scopes on Google's consent screen,
+        # oauthlib raises because the granted scopes differ from requested.
+        if "OAUTHLIB_RELAX_TOKEN_SCOPE" not in os.environ:
+            os.environ["OAUTHLIB_RELAX_TOKEN_SCOPE"] = "1"
+
         store = get_oauth21_session_store()
         parsed_response = urlparse(authorization_response)
         state_values = parse_qs(parsed_response.query).get("state")
@@ -521,6 +527,29 @@ def handle_auth_callback(
         flow.fetch_token(authorization_response=authorization_response)
         credentials = flow.credentials
         logger.info("Successfully exchanged authorization code for tokens.")
+
+        # Handle partial OAuth grants: if the user declined some scopes on
+        # Google's consent screen, credentials.granted_scopes contains only
+        # what was actually authorized. Store those instead of the inflated
+        # requested scopes so that refresh() sends the correct scope set.
+        granted = getattr(credentials, "granted_scopes", None)
+        if granted and set(granted) != set(credentials.scopes or []):
+            logger.warning(
+                "Partial OAuth grant detected. Requested: %s, Granted: %s",
+                credentials.scopes,
+                granted,
+            )
+            credentials = Credentials(
+                token=credentials.token,
+                refresh_token=credentials.refresh_token,
+                id_token=getattr(credentials, "id_token", None),
+                token_uri=credentials.token_uri,
+                client_id=credentials.client_id,
+                client_secret=credentials.client_secret,
+                scopes=list(granted),
+                expiry=credentials.expiry,
+                quota_project_id=getattr(credentials, "quota_project_id", None),
+            )
 
         # Get user info to determine user_id (using email here)
         user_info = get_user_info(credentials)
