@@ -291,16 +291,27 @@ def check_client_secrets() -> Optional[str]:
 
 
 def create_oauth_flow(
-    scopes: List[str], redirect_uri: str, state: Optional[str] = None
+    scopes: List[str],
+    redirect_uri: str,
+    state: Optional[str] = None,
+    code_verifier: Optional[str] = None,
 ) -> Flow:
     """Creates an OAuth flow using environment variables or client secrets file."""
+    flow_kwargs = {
+        "scopes": scopes,
+        "redirect_uri": redirect_uri,
+        "state": state,
+    }
+    if code_verifier:
+        flow_kwargs["code_verifier"] = code_verifier
+        # Preserve the original verifier when re-creating the flow in callback.
+        flow_kwargs["autogenerate_code_verifier"] = False
+
     # Try environment variables first
     env_config = load_client_secrets_from_env()
     if env_config:
         # Use client config directly
-        flow = Flow.from_client_config(
-            env_config, scopes=scopes, redirect_uri=redirect_uri, state=state
-        )
+        flow = Flow.from_client_config(env_config, **flow_kwargs)
         logger.debug("Created OAuth flow from environment variables")
         return flow
 
@@ -312,9 +323,7 @@ def create_oauth_flow(
 
     flow = Flow.from_client_secrets_file(
         CONFIG_CLIENT_SECRETS_PATH,
-        scopes=scopes,
-        redirect_uri=redirect_uri,
-        state=state,
+        **flow_kwargs,
     )
     logger.debug(
         f"Created OAuth flow from client secrets file: {CONFIG_CLIENT_SECRETS_PATH}"
@@ -389,7 +398,11 @@ async def start_auth_flow(
             )
 
         store = get_oauth21_session_store()
-        store.store_oauth_state(oauth_state, session_id=session_id)
+        store.store_oauth_state(
+            oauth_state,
+            session_id=session_id,
+            code_verifier=flow.code_verifier,
+        )
 
         logger.info(
             f"Auth flow started for {user_display_name}. Advise user to visit: {auth_url}"
@@ -502,7 +515,12 @@ def handle_auth_callback(
             state_info.get("session_id") or "<unknown>",
         )
 
-        flow = create_oauth_flow(scopes=scopes, redirect_uri=redirect_uri, state=state)
+        flow = create_oauth_flow(
+            scopes=scopes,
+            redirect_uri=redirect_uri,
+            state=state,
+            code_verifier=state_info.get("code_verifier"),
+        )
 
         # Exchange the authorization code for credentials
         # Note: fetch_token will use the redirect_uri configured in the flow
