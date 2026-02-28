@@ -309,7 +309,10 @@ def main():
                 tier_tools, _ = resolve_tools_from_tier(args.tool_tier, tools_to_import)
                 set_enabled_tool_names(set(tier_tools))
             except Exception as e:
-                print(f"Error loading tools for tier '{args.tool_tier}': {e}", file=sys.stderr)
+                print(
+                    f"Error loading tools for tier '{args.tool_tier}': {e}",
+                    file=sys.stderr,
+                )
                 sys.exit(1)
     elif args.tool_tier is not None:
         # Use tier-based tool selection, optionally filtered by services
