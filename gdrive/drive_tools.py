@@ -473,7 +473,9 @@ async def list_drive_items(
         return f"No items found in folder '{folder_id}'."
 
     next_token = results.get("nextPageToken")
-    header = f"Found {len(files)} items in folder '{folder_id}' for {user_google_email}:"
+    header = (
+        f"Found {len(files)} items in folder '{folder_id}' for {user_google_email}:"
+    )
     formatted_items_text_parts = [header]
     for item in files:
         if detailed:
