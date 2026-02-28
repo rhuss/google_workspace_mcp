@@ -79,9 +79,8 @@ async def search_drive_files(
         detailed (bool): Whether to include size, modified time, and link in results. Defaults to True.
 
     Returns:
-        str: A formatted list of found files/folders with their details (ID, name, type, size, modified time, link).
-             Includes a nextPageToken line when more results are available.
         str: A formatted list of found files/folders with their details (ID, name, type, and optionally size, modified time, link).
+             Includes a nextPageToken line when more results are available.
     """
     logger.info(
         f"[search_drive_files] Invoked. Email: '{user_google_email}', Query: '{query}'"
@@ -123,12 +122,6 @@ async def search_drive_files(
     header = f"Found {len(files)} files for {user_google_email} matching '{query}':"
     formatted_files_text_parts = [header]
     for item in files:
-        size_str = f", Size: {item.get('size', 'N/A')}" if "size" in item else ""
-        formatted_files_text_parts.append(
-            f'- Name: "{item["name"]}" (ID: {item["id"]}, Type: {item["mimeType"]}{size_str}, Modified: {item.get("modifiedTime", "N/A")}) Link: {item.get("webViewLink", "#")}'
-        )
-    if next_token:
-        formatted_files_text_parts.append(f"nextPageToken: {next_token}")
         if detailed:
             size_str = f", Size: {item.get('size', 'N/A')}" if "size" in item else ""
             formatted_files_text_parts.append(
@@ -138,6 +131,8 @@ async def search_drive_files(
             formatted_files_text_parts.append(
                 f'- Name: "{item["name"]}" (ID: {item["id"]}, Type: {item["mimeType"]})'
             )
+    if next_token:
+        formatted_files_text_parts.append(f"nextPageToken: {next_token}")
     text_output = "\n".join(formatted_files_text_parts)
     return text_output
 
@@ -481,12 +476,6 @@ async def list_drive_items(
     header = f"Found {len(files)} items in folder '{folder_id}' for {user_google_email}:"
     formatted_items_text_parts = [header]
     for item in files:
-        size_str = f", Size: {item.get('size', 'N/A')}" if "size" in item else ""
-        formatted_items_text_parts.append(
-            f'- Name: "{item["name"]}" (ID: {item["id"]}, Type: {item["mimeType"]}{size_str}, Modified: {item.get("modifiedTime", "N/A")}) Link: {item.get("webViewLink", "#")}'
-        )
-    if next_token:
-        formatted_items_text_parts.append(f"nextPageToken: {next_token}")
         if detailed:
             size_str = f", Size: {item.get('size', 'N/A')}" if "size" in item else ""
             formatted_items_text_parts.append(
@@ -496,6 +485,8 @@ async def list_drive_items(
             formatted_items_text_parts.append(
                 f'- Name: "{item["name"]}" (ID: {item["id"]}, Type: {item["mimeType"]})'
             )
+    if next_token:
+        formatted_items_text_parts.append(f"nextPageToken: {next_token}")
     text_output = "\n".join(formatted_items_text_parts)
     return text_output
 

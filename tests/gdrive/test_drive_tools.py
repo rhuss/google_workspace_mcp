@@ -13,13 +13,6 @@ import os
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
-from gdrive.drive_tools import list_drive_items, search_drive_files
-
-
-def _unwrap(fn):
-    """Unwrap a decorator chain to the original async function."""
-    if hasattr(fn, "fn"):
-        fn = fn.fn  # FunctionTool wrapper (other server versions)
 from gdrive.drive_helpers import build_drive_list_params
 from gdrive.drive_tools import list_drive_items, search_drive_files
 
@@ -205,6 +198,8 @@ async def test_list_drive_items_no_next_page_token_when_absent(mock_resolve_fold
     )
 
     assert "nextPageToken" not in result
+
+
 # Helpers
 # ---------------------------------------------------------------------------
 
