@@ -560,6 +560,21 @@ Read-only mode provides secure, restricted access by:
 - Automatically filtering out tools that require write permissions at startup
 - Allowing read operations: list, get, search, and export across all services
 
+**🔐 Granular Permissions**
+```bash
+# Per-service permission levels
+uv run main.py --permissions gmail:organize drive:readonly
+
+# Combine permissions with tier filtering
+uv run main.py --permissions gmail:send drive:full --tool-tier core
+```
+Granular permissions mode provides service-by-service scope control:
+- Format: `service:level` (one entry per service)
+- Gmail levels: `readonly`, `organize`, `drafts`, `send`, `full` (cumulative)
+- Other services currently support: `readonly`, `full`
+- `--permissions` and `--read-only` are mutually exclusive
+- With `--tool-tier`, only tier-matched tools are enabled and only services with matching tier tools are imported
+
 **★ Tool Tiers**
 ```bash
 uv run main.py --tool-tier core      # ● Essential tools only
@@ -738,6 +753,9 @@ uv run main.py --tool-tier complete                        # Enable all availabl
 uv run main.py --tools gmail drive --tool-tier core        # Core tools for specific services
 uv run main.py --tools gmail --tool-tier extended          # Extended Gmail functionality only
 uv run main.py --tools docs sheets --tool-tier complete    # Full access to Docs and Sheets
+
+# Combine tier selection with granular permission levels
+uv run main.py --permissions gmail:organize drive:full --tool-tier core
 ```
 
 ## 📋 Credential Configuration

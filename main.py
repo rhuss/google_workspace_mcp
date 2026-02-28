@@ -91,6 +91,23 @@ def configure_safe_logging():
             handler.setFormatter(safe_formatter)
 
 
+def resolve_permissions_mode_selection(
+    permission_services: list[str], tool_tier: str | None
+) -> tuple[list[str], set[str] | None]:
+    """
+    Resolve service imports and optional tool-name filtering for --permissions mode.
+
+    When a tier is specified, both:
+    - imported services are narrowed to services with tier-matched tools
+    - registered tools are narrowed to the resolved tool names
+    """
+    if tool_tier is None:
+        return permission_services, None
+
+    tier_tools, tier_services = resolve_tools_from_tier(tool_tier, permission_services)
+    return tier_services, set(tier_tools)
+
+
 def main():
     """
     Main entry point for the Google Workspace MCP server.
@@ -306,8 +323,10 @@ def main():
         if args.tool_tier is not None:
             # Combine with tier filtering within the permission-selected services
             try:
-                tier_tools, _ = resolve_tools_from_tier(args.tool_tier, tools_to_import)
-                set_enabled_tool_names(set(tier_tools))
+                tools_to_import, tier_tool_filter = resolve_permissions_mode_selection(
+                    tools_to_import, args.tool_tier
+                )
+                set_enabled_tool_names(tier_tool_filter)
             except Exception as e:
                 print(
                     f"Error loading tools for tier '{args.tool_tier}': {e}",
