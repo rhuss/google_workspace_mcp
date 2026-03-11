@@ -5,6 +5,7 @@ import json
 import jwt
 import logging
 import os
+import webbrowser
 
 from typing import List, Optional, Tuple, Dict, Any
 from urllib.parse import parse_qs, urlparse
@@ -357,7 +358,20 @@ async def start_auth_flow(
             state=oauth_state,
         )
 
-        auth_url, _ = flow.authorization_url(access_type="offline", prompt="consent")
+        # Add login_hint if email provided so Google pre-selects the right account
+        auth_kwargs = {"access_type": "offline", "prompt": "consent"}
+        if initial_email_provided:
+            auth_kwargs["login_hint"] = user_google_email
+        auth_url, _ = flow.authorization_url(**auth_kwargs)
+
+        # Auto-open the auth URL in the user's browser
+        try:
+            webbrowser.open(auth_url)
+            logger.info("Opened auth URL in browser automatically")
+            browser_opened = True
+        except Exception as e:
+            logger.warning(f"Could not open browser automatically: {e}")
+            browser_opened = False
 
         session_id = None
         try:
@@ -374,15 +388,19 @@ async def start_auth_flow(
             f"Auth flow started for {user_display_name}. State: {oauth_state[:8]}... Advise user to visit: {auth_url}"
         )
 
-        message_lines = [
-            f"**ACTION REQUIRED: Google Authentication Needed for {user_display_name}**\n",
-            f"To proceed, the user must authorize this application for {service_name} access using all required permissions.",
-            "**LLM, please present this exact authorization URL to the user as a clickable hyperlink:**",
-            f"Authorization URL: {auth_url}",
-            f"Markdown for hyperlink: [Click here to authorize {service_name} access]({auth_url})\n",
-            "**LLM, after presenting the link, instruct the user as follows:**",
-            "1. Click the link and complete the authorization in their browser.",
-        ]
+        if browser_opened:
+            message_lines = [
+                f"**ACTION REQUIRED: Google Authentication Needed for {user_display_name}**\n",
+                "The authorization page has been **automatically opened in your browser**.",
+                "Please complete the authorization in your browser.",
+            ]
+        else:
+            message_lines = [
+                f"**ACTION REQUIRED: Google Authentication Needed for {user_display_name}**\n",
+                f"To proceed, the user must authorize this application for {service_name} access using all required permissions.",
+                "**LLM: The auth URL could not be opened automatically. Please instruct the user to open this URL manually:**",
+                f"Authorization URL: {auth_url}",
+            ]
         session_info_for_llm = ""
 
         if not initial_email_provided:
