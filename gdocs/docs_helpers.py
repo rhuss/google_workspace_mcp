@@ -138,9 +138,15 @@ def build_paragraph_style(
 
     if named_style_type is not None:
         valid_styles = [
-            "NORMAL_TEXT", "TITLE", "SUBTITLE",
-            "HEADING_1", "HEADING_2", "HEADING_3",
-            "HEADING_4", "HEADING_5", "HEADING_6",
+            "NORMAL_TEXT",
+            "TITLE",
+            "SUBTITLE",
+            "HEADING_1",
+            "HEADING_2",
+            "HEADING_3",
+            "HEADING_4",
+            "HEADING_5",
+            "HEADING_6",
         ]
         if named_style_type not in valid_styles:
             raise ValueError(
@@ -647,6 +653,33 @@ def create_bullet_list_request(
     return requests
 
 
+def create_delete_bullet_list_request(
+    start_index: int,
+    end_index: int,
+    doc_tab_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Create a deleteParagraphBullets request to remove bullet/list formatting.
+
+    Args:
+        start_index: Start of the paragraph range
+        end_index: End of the paragraph range
+        doc_tab_id: Optional ID of the tab to target
+
+    Returns:
+        Dictionary representing the deleteParagraphBullets request
+    """
+    range_obj = {"startIndex": start_index, "endIndex": end_index}
+    if doc_tab_id:
+        range_obj["tabId"] = doc_tab_id
+
+    return {
+        "deleteParagraphBullets": {
+            "range": range_obj,
+        }
+    }
+
+
 def validate_operation(operation: Dict[str, Any]) -> tuple[bool, str]:
     """
     Validate a batch operation dictionary.
@@ -671,6 +704,7 @@ def validate_operation(operation: Dict[str, Any]) -> tuple[bool, str]:
         "insert_table": ["index", "rows", "columns"],
         "insert_page_break": ["index"],
         "find_replace": ["find_text", "replace_text"],
+        "create_bullet_list": ["start_index", "end_index"],
         "insert_doc_tab": ["title", "index"],
         "delete_doc_tab": ["tab_id"],
         "update_doc_tab": ["tab_id", "title"],
