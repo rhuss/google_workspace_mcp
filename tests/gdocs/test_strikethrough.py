@@ -4,11 +4,37 @@ Tests for strikethrough text style support.
 Covers the helpers, validation, and batch manager integration.
 """
 
+import json
+from difflib import unified_diff
+from pathlib import Path
 import pytest
 from unittest.mock import AsyncMock, Mock
 
+from core.server import server
+from core.tool_registry import get_tool_components
+from gdocs import docs_tools
 from gdocs.docs_helpers import build_text_style, create_format_text_request
 from gdocs.managers.validation_manager import ValidationManager
+
+SCHEMA_GOLDEN_PATH = Path(__file__).with_name("golden").joinpath(
+    "docs_tool_schemas.json"
+)
+
+
+def _unwrap(tool):
+    """Unwrap the decorated tool function to the original implementation."""
+    fn = tool.fn if hasattr(tool, "fn") else tool
+    while hasattr(fn, "__wrapped__"):
+        fn = fn.__wrapped__
+    return fn
+
+
+def _schema_subset():
+    components = get_tool_components(server)
+    return {
+        name: components[name].parameters
+        for name in ("modify_doc_text", "batch_update_doc")
+    }
 
 
 class TestBuildTextStyleStrikethrough:
@@ -117,3 +143,80 @@ class TestBatchManagerIntegration:
         )
         assert success
         assert meta["operations_count"] == 1
+
+
+class TestPublicToolWiring:
+    @pytest.fixture()
+    def service(self):
+        mock_service = Mock()
+        mock_service.documents().batchUpdate().execute.return_value = {"replies": [{}]}
+        return mock_service
+
+    @pytest.mark.asyncio
+    async def test_modify_doc_text_public_tool_includes_strikethrough_in_request(
+        self, service
+    ):
+        await _unwrap(docs_tools.modify_doc_text)(
+            service=service,
+            user_google_email="user@example.com",
+            document_id="a" * 25,
+            start_index=1,
+            end_index=10,
+            strikethrough=True,
+        )
+
+        call_kwargs = service.documents.return_value.batchUpdate.call_args.kwargs
+        request = call_kwargs["body"]["requests"][0]["updateTextStyle"]
+
+        assert call_kwargs["documentId"] == "a" * 25
+        assert request["textStyle"]["strikethrough"] is True
+        assert "strikethrough" in request["fields"]
+
+    @pytest.mark.asyncio
+    async def test_batch_update_doc_public_tool_includes_strikethrough_in_request(
+        self, service
+    ):
+        await _unwrap(docs_tools.batch_update_doc)(
+            service=service,
+            user_google_email="user@example.com",
+            document_id="b" * 25,
+            operations=[
+                {
+                    "type": "format_text",
+                    "start_index": 1,
+                    "end_index": 10,
+                    "strikethrough": True,
+                }
+            ],
+        )
+
+        call_kwargs = service.documents.return_value.batchUpdate.call_args.kwargs
+        request = call_kwargs["body"]["requests"][0]["updateTextStyle"]
+
+        assert call_kwargs["documentId"] == "b" * 25
+        assert request["textStyle"]["strikethrough"] is True
+        assert "strikethrough" in request["fields"]
+
+
+class TestDocsToolSchemaGolden:
+    def test_docs_tool_schema_matches_golden(self):
+        generated = _schema_subset()
+        golden = json.loads(SCHEMA_GOLDEN_PATH.read_text())
+
+        assert (
+            "strikethrough" in generated["modify_doc_text"]["properties"]
+        ), "modify_doc_text schema is missing the strikethrough parameter"
+
+        if generated != golden:
+            expected = json.dumps(golden, indent=2, sort_keys=True).splitlines()
+            actual = json.dumps(generated, indent=2, sort_keys=True).splitlines()
+            diff = "\n".join(
+                unified_diff(
+                    expected,
+                    actual,
+                    fromfile=str(SCHEMA_GOLDEN_PATH),
+                    tofile="generated",
+                    lineterm="",
+                )
+            )
+            pytest.fail(f"Docs tool schema drifted from golden:\n{diff}")
