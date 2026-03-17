@@ -143,6 +143,15 @@ async def test_draft_gmail_message_autofills_reply_headers_from_thread():
         include_signature=False,
     )
 
+    # Verify threads().get() was called with correct parameters
+    thread_get_kwargs = (
+        mock_service.users.return_value.threads.return_value.get.call_args.kwargs
+    )
+    assert thread_get_kwargs["userId"] == "me"
+    assert thread_get_kwargs["id"] == "thread123"
+    assert thread_get_kwargs["format"] == "metadata"
+    assert "Message-ID" in thread_get_kwargs["metadataHeaders"]
+
     assert "Draft created! Draft ID: draft_reply" in result
 
     create_kwargs = (
@@ -228,6 +237,34 @@ async def test_draft_gmail_message_gracefully_degrades_when_thread_fetch_fails()
     mock_service = Mock()
     mock_service.users().drafts().create().execute.return_value = {"id": "draft_reply"}
     mock_service.users().threads().get().execute.side_effect = RuntimeError("boom")
+
+    result = await _unwrap(draft_gmail_message)(
+        service=mock_service,
+        user_google_email="user@example.com",
+        to="recipient@example.com",
+        subject="Meeting tomorrow",
+        body="Thanks for the update.",
+        thread_id="thread123",
+        include_signature=False,
+    )
+
+    assert "Draft created! Draft ID: draft_reply" in result
+
+    create_kwargs = (
+        mock_service.users.return_value.drafts.return_value.create.call_args.kwargs
+    )
+    raw_message = create_kwargs["body"]["message"]["raw"]
+    raw_text = base64.urlsafe_b64decode(raw_message).decode("utf-8", errors="ignore")
+
+    assert "In-Reply-To:" not in raw_text
+    assert "References:" not in raw_text
+
+
+@pytest.mark.asyncio
+async def test_draft_gmail_message_gracefully_degrades_when_thread_has_no_messages():
+    mock_service = Mock()
+    mock_service.users().drafts().create().execute.return_value = {"id": "draft_reply"}
+    mock_service.users().threads().get().execute.return_value = {"messages": []}
 
     result = await _unwrap(draft_gmail_message)(
         service=mock_service,
