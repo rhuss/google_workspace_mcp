@@ -375,6 +375,7 @@ async def modify_doc_text(
     bold: bool = None,
     italic: bool = None,
     underline: bool = None,
+    strikethrough: bool = None,
     font_size: int = None,
     font_family: str = None,
     text_color: str = None,
@@ -393,6 +394,7 @@ async def modify_doc_text(
         bold: Whether to make text bold (True/False/None to leave unchanged)
         italic: Whether to make text italic (True/False/None to leave unchanged)
         underline: Whether to underline text (True/False/None to leave unchanged)
+        strikethrough: Whether to strike through text (True/False/None to leave unchanged)
         font_size: Font size in points
         font_family: Font family name (e.g., "Arial", "Times New Roman")
         text_color: Foreground text color (#RRGGBB)
@@ -404,7 +406,7 @@ async def modify_doc_text(
     """
     logger.info(
         f"[modify_doc_text] Doc={document_id}, start={start_index}, end={end_index}, text={text is not None}, "
-        f"formatting={any(p is not None for p in [bold, italic, underline, font_size, font_family, text_color, background_color, link_url])}"
+        f"formatting={any(p is not None for p in [bold, italic, underline, strikethrough, font_size, font_family, text_color, background_color, link_url])}"
     )
 
     # Input validation
@@ -419,6 +421,7 @@ async def modify_doc_text(
         bold,
         italic,
         underline,
+        strikethrough,
         font_size,
         font_family,
         text_color,
@@ -426,7 +429,7 @@ async def modify_doc_text(
         link_url,
     ]
     if text is None and not any(p is not None for p in formatting_params):
-        return "Error: Must provide either 'text' to insert/replace, or formatting parameters (bold, italic, underline, font_size, font_family, text_color, background_color, link_url)."
+        return "Error: Must provide either 'text' to insert/replace, or formatting parameters (bold, italic, underline, strikethrough, font_size, font_family, text_color, background_color, link_url)."
 
     # Validate text formatting params if provided
     if any(p is not None for p in formatting_params):
@@ -434,6 +437,7 @@ async def modify_doc_text(
             bold,
             italic,
             underline,
+            strikethrough,
             font_size,
             font_family,
             text_color,
@@ -515,6 +519,7 @@ async def modify_doc_text(
                 bold,
                 italic,
                 underline,
+                strikethrough,
                 font_size,
                 font_family,
                 text_color,
@@ -529,6 +534,7 @@ async def modify_doc_text(
                 ("bold", bold),
                 ("italic", italic),
                 ("underline", underline),
+                ("strikethrough", strikethrough),
                 ("font_size", font_size),
                 ("font_family", font_family),
                 ("text_color", text_color),
@@ -860,8 +866,8 @@ async def batch_update_doc(
       delete_text      - required: start_index (int), end_index (int)
       replace_text     - required: start_index (int), end_index (int), text (str)
       format_text      - required: start_index (int), end_index (int)
-                         optional: bold, italic, underline, font_size, font_family,
-                                   text_color, background_color, link_url
+                         optional: bold, italic, underline, strikethrough, font_size,
+                                   font_family, text_color, background_color, link_url
       update_paragraph_style
                        - required: start_index (int), end_index (int)
                          optional: heading_level (0-6, 0=normal), alignment
