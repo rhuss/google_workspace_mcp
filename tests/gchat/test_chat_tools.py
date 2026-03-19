@@ -172,12 +172,12 @@ async def test_get_messages_exposes_message_filter_and_forwards_it(mock_resolve)
         people_service=people_service,
         user_google_email="test@example.com",
         space_id="spaces/S",
-        message_filter='thread.name = spaces/S/threads/T',
+        message_filter="thread.name = spaces/S/threads/T",
     )
 
     assert "Filtered message" in result
     list_kwargs = chat_service.spaces().messages().list.call_args.kwargs
-    assert list_kwargs["filter"] == 'thread.name = spaces/S/threads/T'
+    assert list_kwargs["filter"] == "thread.name = spaces/S/threads/T"
 
 
 # ---------------------------------------------------------------------------
