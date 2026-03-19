@@ -406,9 +406,7 @@ async def search_messages(
     # Client-side text filtering (text: operator is not supported by the API)
     if query:
         query_lower = query.lower()
-        messages = [
-            m for m in messages if query_lower in (m.get("text") or "").lower()
-        ]
+        messages = [m for m in messages if query_lower in (m.get("text") or "").lower()]
 
     if not messages:
         return f"No messages found matching '{search_desc}' in {context}."
