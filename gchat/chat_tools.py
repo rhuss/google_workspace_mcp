@@ -352,7 +352,7 @@ async def search_messages(
     )
 
     # Build API filter string (only createTime/thread.name operators are supported)
-    filter_str = time_filter or None
+    filter_str = time_filter
 
     search_terms = []
     if query:
@@ -378,24 +378,29 @@ async def search_messages(
         )
         spaces = spaces_response.get("spaces", [])
 
-        messages = []
-        for space in spaces[:max_spaces]:
+        async def fetch_space_messages(space: dict) -> List[dict]:
             try:
                 list_params = {"parent": space.get("name"), "pageSize": page_size}
                 if filter_str:
                     list_params["filter"] = filter_str
-                space_messages = await asyncio.to_thread(
+                response = await asyncio.to_thread(
                     chat_service.spaces().messages().list(**list_params).execute
                 )
-                space_msgs = space_messages.get("messages", [])
-                for msg in space_msgs:
-                    msg["_space_name"] = space.get("displayName", "Unknown")
-                messages.extend(space_msgs)
+                msgs = response.get("messages", [])
+                display = space.get("displayName", "Unknown")
+                for msg in msgs:
+                    msg["_space_name"] = display
+                return msgs
             except HttpError as e:
                 logger.debug(
                     "Skipping space %s during search: %s", space.get("name"), e
                 )
-                continue
+                return []
+
+        results = await asyncio.gather(
+            *(fetch_space_messages(s) for s in spaces[:max_spaces])
+        )
+        messages = [msg for batch in results for msg in batch]
         context = "all accessible spaces"
 
     # Client-side text filtering (text: operator is not supported by the API)
