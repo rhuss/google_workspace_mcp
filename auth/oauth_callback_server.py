@@ -135,6 +135,8 @@ class MinimalOAuthServer:
         """Check if the server is actually accepting connections on its port."""
         if not self.is_running:
             return False
+        if self.server_thread and not self.server_thread.is_alive():
+            return False
         try:
             parsed_uri = urlparse(self.base_uri)
             hostname = parsed_uri.hostname or "localhost"
@@ -146,6 +148,10 @@ class MinimalOAuthServer:
                 return s.connect_ex((hostname, self.port)) == 0
         except Exception:
             return False
+
+    def matches_endpoint(self, port: int, base_uri: str) -> bool:
+        """Return True when this server instance matches the requested callback endpoint."""
+        return self.port == port and self.base_uri == base_uri
 
     def start(self) -> tuple[bool, str]:
         """
@@ -271,7 +277,20 @@ def ensure_oauth_callback_available(
         return True, ""
 
     elif transport_mode == "stdio":
-        # In stdio mode, start minimal server if not already running
+        # In stdio mode, start or refresh the minimal callback server as needed.
+        if _minimal_oauth_server and not _minimal_oauth_server.matches_endpoint(
+            port, base_uri
+        ):
+            logger.info(
+                "OAuth callback endpoint changed from %s:%s to %s:%s; recreating minimal OAuth server",
+                _minimal_oauth_server.base_uri,
+                _minimal_oauth_server.port,
+                base_uri,
+                port,
+            )
+            _minimal_oauth_server.stop()
+            _minimal_oauth_server = None
+
         if _minimal_oauth_server is None:
             logger.info(f"Creating minimal OAuth server instance for {base_uri}:{port}")
             _minimal_oauth_server = MinimalOAuthServer(port, base_uri)

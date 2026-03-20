@@ -610,20 +610,22 @@ async def start_google_auth(
         return f"**Authentication Error:** {error_message}"
 
     try:
-        # Ensure OAuth callback server is running (it may have lost the port or never started)
-        from auth.oauth_callback_server import ensure_oauth_callback_available
-        from auth.oauth_config import get_oauth_config
+        transport_mode = get_transport_mode()
+        if transport_mode == "stdio":
+            # Only stdio legacy OAuth depends on the standalone callback server.
+            from auth.oauth_callback_server import ensure_oauth_callback_available
+            from auth.oauth_config import get_oauth_config
 
-        config = get_oauth_config()
-        success, error_msg = await asyncio.to_thread(
-            ensure_oauth_callback_available,
-            get_transport_mode(),
-            config.port,
-            config.base_uri,
-        )
-        if not success:
-            error_detail = f" ({error_msg})" if error_msg else ""
-            return f"**Error:** Cannot initiate OAuth flow - callback server unavailable{error_detail}"
+            config = get_oauth_config()
+            success, error_msg = await asyncio.to_thread(
+                ensure_oauth_callback_available,
+                transport_mode,
+                config.port,
+                config.base_uri,
+            )
+            if not success:
+                error_detail = f" ({error_msg})" if error_msg else ""
+                return f"**Error:** Cannot initiate OAuth flow - callback server unavailable{error_detail}"
 
         auth_message = await start_auth_flow(
             user_google_email=user_google_email,
