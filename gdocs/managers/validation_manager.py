@@ -156,6 +156,7 @@ class ValidationManager:
         bold: Optional[bool] = None,
         italic: Optional[bool] = None,
         underline: Optional[bool] = None,
+        strikethrough: Optional[bool] = None,
         font_size: Optional[int] = None,
         font_family: Optional[str] = None,
         text_color: Optional[str] = None,
@@ -169,6 +170,7 @@ class ValidationManager:
             bold: Bold setting
             italic: Italic setting
             underline: Underline setting
+            strikethrough: Strikethrough setting
             font_size: Font size in points
             font_family: Font family name
             text_color: Text color in "#RRGGBB" format
@@ -183,6 +185,7 @@ class ValidationManager:
             bold,
             italic,
             underline,
+            strikethrough,
             font_size,
             font_family,
             text_color,
@@ -192,7 +195,7 @@ class ValidationManager:
         if all(param is None for param in formatting_params):
             return (
                 False,
-                "At least one formatting parameter must be provided (bold, italic, underline, font_size, font_family, text_color, background_color, or link_url)",
+                "At least one formatting parameter must be provided (bold, italic, underline, strikethrough, font_size, font_family, text_color, background_color, or link_url)",
             )
 
         # Validate boolean parameters
@@ -200,6 +203,7 @@ class ValidationManager:
             (bold, "bold"),
             (italic, "italic"),
             (underline, "underline"),
+            (strikethrough, "strikethrough"),
         ]:
             if param is not None and not isinstance(param, bool):
                 return (
@@ -618,6 +622,7 @@ class ValidationManager:
                     op.get("bold"),
                     op.get("italic"),
                     op.get("underline"),
+                    op.get("strikethrough"),
                     op.get("font_size"),
                     op.get("font_family"),
                     op.get("text_color"),

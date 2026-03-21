@@ -54,6 +54,7 @@ def build_text_style(
     bold: bool = None,
     italic: bool = None,
     underline: bool = None,
+    strikethrough: bool = None,
     font_size: int = None,
     font_family: str = None,
     text_color: str = None,
@@ -67,6 +68,7 @@ def build_text_style(
         bold: Whether text should be bold
         italic: Whether text should be italic
         underline: Whether text should be underlined
+        strikethrough: Whether text should be struck through
         font_size: Font size in points
         font_family: Font family name
         text_color: Text color as hex string "#RRGGBB"
@@ -90,6 +92,10 @@ def build_text_style(
     if underline is not None:
         text_style["underline"] = underline
         fields.append("underline")
+
+    if strikethrough is not None:
+        text_style["strikethrough"] = strikethrough
+        fields.append("strikethrough")
 
     if font_size is not None:
         text_style["fontSize"] = {"magnitude": font_size, "unit": "PT"}
@@ -279,6 +285,7 @@ def create_format_text_request(
     bold: bool = None,
     italic: bool = None,
     underline: bool = None,
+    strikethrough: bool = None,
     font_size: int = None,
     font_family: str = None,
     text_color: str = None,
@@ -295,6 +302,7 @@ def create_format_text_request(
         bold: Whether text should be bold
         italic: Whether text should be italic
         underline: Whether text should be underlined
+        strikethrough: Whether text should be struck through
         font_size: Font size in points
         font_family: Font family name
         text_color: Text color as hex string "#RRGGBB"
@@ -309,6 +317,7 @@ def create_format_text_request(
         bold,
         italic,
         underline,
+        strikethrough,
         font_size,
         font_family,
         text_color,
@@ -654,6 +663,33 @@ def create_bullet_list_request(
     return requests
 
 
+def create_delete_bullet_list_request(
+    start_index: int,
+    end_index: int,
+    doc_tab_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Create a deleteParagraphBullets request to remove bullet/list formatting.
+
+    Args:
+        start_index: Start of the paragraph range
+        end_index: End of the paragraph range
+        doc_tab_id: Optional ID of the tab to target
+
+    Returns:
+        Dictionary representing the deleteParagraphBullets request
+    """
+    range_obj = {"startIndex": start_index, "endIndex": end_index}
+    if doc_tab_id:
+        range_obj["tabId"] = doc_tab_id
+
+    return {
+        "deleteParagraphBullets": {
+            "range": range_obj,
+        }
+    }
+
+
 def validate_operation(operation: Dict[str, Any]) -> tuple[bool, str]:
     """
     Validate a batch operation dictionary.
@@ -678,6 +714,7 @@ def validate_operation(operation: Dict[str, Any]) -> tuple[bool, str]:
         "insert_table": ["index", "rows", "columns"],
         "insert_page_break": ["index"],
         "find_replace": ["find_text", "replace_text"],
+        "create_bullet_list": ["start_index", "end_index"],
         "insert_doc_tab": ["title", "index"],
         "delete_doc_tab": ["tab_id"],
         "update_doc_tab": ["tab_id", "title"],
