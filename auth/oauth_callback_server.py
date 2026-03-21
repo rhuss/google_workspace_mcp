@@ -151,7 +151,22 @@ class MinimalOAuthServer:
 
     def matches_endpoint(self, port: int, base_uri: str) -> bool:
         """Return True when this server instance matches the requested callback endpoint."""
-        return self.port == port and self.base_uri == base_uri
+        if self.port != port:
+            return False
+        self_parsed = urlparse(self.base_uri)
+        other_parsed = urlparse(base_uri)
+        if self_parsed.scheme.lower() != other_parsed.scheme.lower():
+            return False
+        if (self_parsed.hostname or "").lower() != (other_parsed.hostname or "").lower():
+            return False
+        default_port = 443 if self_parsed.scheme.lower() == "https" else 80
+        self_port = self_parsed.port or default_port
+        other_port = other_parsed.port or default_port
+        if self_port != other_port:
+            return False
+        self_path = self_parsed.path.rstrip("/") or ""
+        other_path = other_parsed.path.rstrip("/") or ""
+        return self_path == other_path
 
     def start(self) -> tuple[bool, str]:
         """
@@ -166,7 +181,9 @@ class MinimalOAuthServer:
                 return True, ""
             else:
                 logger.warning("Minimal OAuth server was marked running but port is not responding. Restarting.")
-                self.is_running = False
+                self.stop()
+                self.server = None
+                self.server_thread = None
 
         # Check if port is available
         # Extract hostname from base_uri (e.g., "http://localhost" -> "localhost")
