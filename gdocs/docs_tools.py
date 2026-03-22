@@ -873,7 +873,8 @@ async def batch_update_doc(
                          optional: heading_level (0-6, 0=normal), alignment
                                    (START/CENTER/END/JUSTIFIED), line_spacing,
                                    indent_first_line, indent_start, indent_end,
-                                   space_above, space_below
+                                   space_above, space_below, named_style_type
+                                   ('NORMAL_TEXT'|'TITLE'|'SUBTITLE'|'HEADING_1'..'HEADING_6')
       insert_table     - required: index (int), rows (int), columns (int)
       insert_page_break- required: index (int)
       find_replace     - required: find_text (str), replace_text (str)
