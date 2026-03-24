@@ -30,6 +30,17 @@ VALID_SUGGESTIONS_VIEW_MODES = (
 )
 
 
+def validate_suggestions_view_mode(suggestions_view_mode: str) -> Optional[str]:
+    """Return an error message when suggestions_view_mode is invalid."""
+    if suggestions_view_mode in VALID_SUGGESTIONS_VIEW_MODES:
+        return None
+
+    return (
+        "Error: suggestions_view_mode must be one of "
+        f"{', '.join(VALID_SUGGESTIONS_VIEW_MODES)}, got '{suggestions_view_mode}'"
+    )
+
+
 def _normalize_color(
     color: Optional[str], param_name: str
 ) -> Optional[Dict[str, float]]:
