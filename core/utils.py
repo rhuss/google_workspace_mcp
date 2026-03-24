@@ -8,7 +8,7 @@ import asyncio
 import functools
 
 from pathlib import Path
-from typing import Annotated, List, Optional
+from typing import Annotated, Any, List, Optional
 
 from pydantic import BeforeValidator
 from defusedxml import ElementTree as ET
@@ -33,7 +33,7 @@ class UserInputError(Exception):
     pass
 
 
-def _coerce_json_str_to_list(v):
+def _coerce_json_str_to_list(v: Any) -> Any:
     """Coerce a JSON-encoded string to a list.
 
     Some MCP clients (e.g. Cowork) serialise array parameters as JSON strings
