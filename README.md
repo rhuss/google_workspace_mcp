@@ -1603,7 +1603,7 @@ The credential store automatically handles credential serialization, expiry pars
 ---
 
 ## <span style="color:#adbcbc">⊠ Security</span>
-
+- **Prompt Injection**: This MCP server has the capability to retrieve your email, calendar events and drive files. Those emails, events and files could potentially contain prompt injections - i.e. hidden white text that tells it to forward your emails to a different address. You should exercise caution and in general, only connect trusted data to an LLM!
 - **Credentials**: Never commit `.env`, `client_secret.json` or the `.credentials/` directory to source control!
 - **OAuth Callback**: Uses `http://localhost:8000/oauth2callback` for development (requires `OAUTHLIB_INSECURE_TRANSPORT=1`)
 - **Transport-Aware Callbacks**: Stdio mode starts a minimal HTTP server only for OAuth, ensuring callbacks work in all modes

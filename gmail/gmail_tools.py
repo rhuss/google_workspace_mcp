@@ -23,7 +23,13 @@ from pydantic import Field
 from googleapiclient.errors import HttpError
 
 from auth.service_decorator import require_google_service
-from core.utils import handle_http_errors, validate_file_path, UserInputError
+from core.utils import (
+    handle_http_errors,
+    validate_file_path,
+    UserInputError,
+    StringList,
+    JsonDict,
+)
 from core.server import server
 from auth.scopes import (
     GMAIL_SEND_SCOPE,
@@ -966,7 +972,7 @@ async def get_gmail_message_content(
 @require_google_service("gmail", "gmail_read")
 async def get_gmail_messages_content_batch(
     service,
-    message_ids: List[str],
+    message_ids: StringList,
     user_google_email: str,
     format: Literal["full", "metadata"] = "full",
 ) -> str:
@@ -1933,7 +1939,7 @@ async def get_gmail_thread_content(
 )
 async def get_gmail_threads_content_batch(
     service,
-    thread_ids: List[str],
+    thread_ids: StringList,
     user_google_email: str,
 ) -> str:
     """
@@ -2247,8 +2253,8 @@ async def manage_gmail_filter(
     service,
     user_google_email: str,
     action: str,
-    criteria: Optional[Dict[str, Any]] = None,
-    filter_action: Optional[Dict[str, Any]] = None,
+    criteria: Optional[JsonDict] = None,
+    filter_action: Optional[JsonDict] = None,
     filter_id: Optional[str] = None,
 ) -> str:
     """
@@ -2316,8 +2322,14 @@ async def modify_gmail_message_labels(
     service,
     user_google_email: str,
     message_id: str,
-    add_label_ids: Optional[List[str]] = None,
-    remove_label_ids: Optional[List[str]] = None,
+    add_label_ids: Annotated[
+        Optional[StringList],
+        Field(json_schema_extra={"type": "array", "items": {"type": "string"}}),
+    ] = None,
+    remove_label_ids: Annotated[
+        Optional[StringList],
+        Field(json_schema_extra={"type": "array", "items": {"type": "string"}}),
+    ] = None,
 ) -> str:
     """
     Adds or removes labels from a Gmail message.
@@ -2367,9 +2379,15 @@ async def modify_gmail_message_labels(
 async def batch_modify_gmail_message_labels(
     service,
     user_google_email: str,
-    message_ids: List[str],
-    add_label_ids: Optional[List[str]] = None,
-    remove_label_ids: Optional[List[str]] = None,
+    message_ids: StringList,
+    add_label_ids: Annotated[
+        Optional[StringList],
+        Field(json_schema_extra={"type": "array", "items": {"type": "string"}}),
+    ] = None,
+    remove_label_ids: Annotated[
+        Optional[StringList],
+        Field(json_schema_extra={"type": "array", "items": {"type": "string"}}),
+    ] = None,
 ) -> str:
     """
     Adds or removes labels from multiple Gmail messages in a single batch request.
