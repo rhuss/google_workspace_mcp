@@ -17,16 +17,15 @@ import json
 import logging
 import os
 import stat
-import string
 import sys
 from typing import Any
 
 from cryptography.fernet import Fernet
 from fastmcp import Client
 from fastmcp.client.auth import OAuth
-from key_value.aio._utils.sanitization import HybridSanitizationStrategy
-from key_value.aio.stores.filetree import FileTreeStore
 from key_value.aio.wrappers.encryption import FernetEncryptionWrapper
+
+from core.storage import make_sanitized_file_store
 
 logger = logging.getLogger(__name__)
 
@@ -57,14 +56,8 @@ def _get_token_storage() -> FernetEncryptionWrapper:
             os.close(fd)
         os.chmod(KEY_PATH, stat.S_IRUSR | stat.S_IWUSR)
 
-    _safe_chars = string.ascii_letters + string.digits + "-_."
     return FernetEncryptionWrapper(
-        key_value=FileTreeStore(
-            data_directory=TOKEN_DIR,
-            key_sanitization_strategy=HybridSanitizationStrategy(
-                allowed_characters=_safe_chars,
-            ),
-        ),
+        key_value=make_sanitized_file_store(TOKEN_DIR),
         fernet=Fernet(key),
     )
 
