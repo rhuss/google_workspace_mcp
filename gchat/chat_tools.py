@@ -351,8 +351,15 @@ async def search_messages(
         f"[search_messages] Email={user_google_email}, Query='{query}', TimeFilter='{time_filter}'"
     )
 
-    # Build API filter string (only createTime/thread.name operators are supported)
-    filter_str = time_filter
+    # Build API filter string. Keep client-side filtering as a fallback so
+    # result formatting stays consistent even if the backend returns extra rows.
+    filter_parts = []
+    if query:
+        escaped_query = query.replace("\\", "\\\\").replace('"', '\\"')
+        filter_parts.append(f'text:"{escaped_query}"')
+    if time_filter:
+        filter_parts.append(time_filter)
+    filter_str = " AND ".join(filter_parts) if filter_parts else None
 
     search_terms = []
     if query:
