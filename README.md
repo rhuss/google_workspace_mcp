@@ -35,20 +35,9 @@
 
 ---
 
-### A quick plug for AI-Enhanced Docs
-<details open>
-<summary>◆ <b>But why?</b></summary>
-
-**This README was written with AI assistance, and here's why that matters**
->
-> As a solo dev building open source tools, comprehensive documentation often wouldn't happen without AI help. Using agentic dev tools like **Roo** & **Claude Code** that understand the entire codebase, AI doesn't just regurgitate generic content - it extracts real implementation details and creates accurate, specific documentation.
->
-> In this case, Sonnet 4 took a pass & a human (me) verified them 2/16/26.
-</details>
-
 ## <span style="color:#adbcbc">Overview</span>
 
-A production-ready MCP server that integrates all major Google Workspace services with AI assistants. It supports both single-user operation and multi-user authentication via OAuth 2.1, making it a powerful backend for custom applications. Built with FastMCP for optimal performance, featuring advanced authentication handling, service caching, and streamlined development patterns.
+Workspace MCP is the single most complete MCP server that integrates all major Google Workspace services with AI assistants. It supports both single-user operation and multi-user authentication via OAuth 2.1, making it a powerful backend for custom applications. Built with FastMCP for optimal performance, featuring advanced authentication handling, service caching, and streamlined development patterns. The entire toolset is available for CLI usage supporting both local and remote instances.
 
 **Simplified Setup**: Now uses Google Desktop OAuth clients - no redirect URIs or port configuration needed!
 
