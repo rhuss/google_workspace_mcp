@@ -349,6 +349,11 @@ def configure_server_for_http():
                     )
             elif use_disk:
                 try:
+                    import string
+
+                    from key_value.aio._utils.sanitization import (
+                        HybridSanitizationStrategy,
+                    )
                     from key_value.aio.stores.filetree import FileTreeStore
 
                     disk_directory = os.getenv(
@@ -364,7 +369,13 @@ def configure_server_for_http():
                                 "~/.fastmcp/oauth-proxy"
                             )
 
-                    client_storage = FileTreeStore(data_directory=disk_directory)
+                    _safe_chars = string.ascii_letters + string.digits + "-_."
+                    client_storage = FileTreeStore(
+                        data_directory=disk_directory,
+                        key_sanitization_strategy=HybridSanitizationStrategy(
+                            allowed_characters=_safe_chars,
+                        ),
+                    )
 
                     jwt_signing_key = validate_and_derive_jwt_key(
                         jwt_signing_key_override, config.client_secret
