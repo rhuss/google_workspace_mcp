@@ -36,7 +36,7 @@
 ---
 
 ### A quick plug for AI-Enhanced Docs
-<details>
+<details open>
 <summary>◆ <b>But why?</b></summary>
 
 **This README was written with AI assistance, and here's why that matters**
@@ -108,7 +108,7 @@ A production-ready MCP server that integrates all major Google Workspace service
 
 ## Quick Start
 
-<details>
+<details open>
 <summary><b>Quick Reference Card</b> - Essential commands & configs at a glance</summary>
 
 <table>
@@ -146,7 +146,7 @@ uv run main.py --tools gmail drive
 
 
 #### Required Configuration
-<details>
+<details open>
 <summary><b>Environment Variables</b> <sub><sup>← Click to configure in Claude Desktop</sup></sub></summary>
 
 <table>
@@ -252,7 +252,7 @@ Chat, Search
 <tr>
 <td colspan="3">
 
-<details>
+<details open>
 <summary><b>OAuth Credential Setup Guide</b> <sub><sup>← Step-by-step instructions</sup></sub></summary>
 
 **Complete Setup Process:**
@@ -282,7 +282,7 @@ Chat, Search
 </tr>
 </table>
 
-<details>
+<details open>
   <summary><b>Quick API Enable Links</b> <sub><sup>← One-click enable each Google API</sup></sub></summary>
   You can enable each one by clicking the links below (make sure you're logged into the Google Cloud Console and have the correct project selected):
 
@@ -388,7 +388,7 @@ export USER_GOOGLE_EMAIL=\
 </tr>
 </table>
 
-<details>
+<details open>
 <summary>≡ <b>Configuration Details</b> <sub><sup>← Learn more about each setting</sup></sub></summary>
 
 | Variable | Description | Default |
@@ -407,7 +407,7 @@ export USER_GOOGLE_EMAIL=\
 
 ### Google Custom Search Setup
 
-<details>
+<details open>
 <summary>◆ <b>Custom Search Configuration</b> <sub><sup>← Enable web search capabilities</sup></sub></summary>
 
 <table>
@@ -455,7 +455,7 @@ export GOOGLE_PSE_ENGINE_ID=\
 <tr>
 <td colspan="3">
 
-<details>
+<details open>
 <summary>≡ <b>Quick Setup Guide</b> <sub><sup>← Step-by-step instructions</sup></sub></summary>
 
 **Complete Setup Process:**
@@ -528,7 +528,7 @@ uv run main.py \
 <tr>
 <td colspan="3">
 
-<details>
+<details open>
 <summary>◆ <b>Advanced Options</b> <sub><sup>← Tool selection, tiers & Docker</sup></sub></summary>
 
 **▶ Selective Tool Loading**
@@ -603,9 +603,7 @@ docker run -e TOOLS="gmail drive calendar" workspace-mcp
 
 ### CLI
 
-#### `workspace-cli` — Persistent Token Storage
-
-The `workspace-cli` command wraps the FastMCP `Client` API with encrypted, disk-backed OAuth token caching. On first run it opens a browser for Google consent; subsequent runs reuse the cached tokens with no auth prompt.
+The `workspace-cli` command lists tools, calls them, and inspects a running server — all with encrypted, disk-backed OAuth token caching so you only authenticate once. On first run it opens a browser for Google consent; subsequent runs reuse the cached tokens automatically.
 
 Tokens are stored encrypted at `~/.workspace-mcp/cli-tokens/` using a Fernet key auto-generated at `~/.workspace-mcp/.cli-encryption-key`.
 
@@ -643,88 +641,16 @@ uv run workspace-cli call search_gmail_messages \
 
 Set URL for remote endpoints with `--url` or the `WORKSPACE_MCP_URL` environment variable.
 
-</details>
+<details open>
+<summary>≡ <b>Advanced: FastMCP CLI</b> <sub><sup>← inspect, install, discover</sup></sub></summary>
 
-#### FastMCP CLI
+The upstream [FastMCP CLI](https://gofastmcp.com/cli) is also bundled and provides additional commands for schema inspection, client installation, and editor discovery. Note that `fastmcp` uses in-memory token storage, so each invocation may re-trigger the OAuth flow.
 
-The [FastMCP CLI](https://gofastmcp.com/cli) also ships with the server and can list tools, call them, inspect schemas, and install the server into any MCP client — all over Streamable HTTP with built-in OAuth. Note that `fastmcp` uses in-memory token storage by default, so each invocation may re-trigger the OAuth flow.
-
-<details>
-<summary>▶ <b>FastMCP CLI Commands</b> <sub><sup>← Interact with a running server from the command line</sup></sub></summary>
-
-<table>
-<tr>
-<td width="50%" align="center">
-
-**▶ List Tools**
 ```bash
-fastmcp list https://test.workspacemcp.com/mcp
-fastmcp list fastmcp_server.py      # local introspection
-```
-<sub>View all available tools</sub>
-
-</td>
-<td width="50%" align="center">
-
-**◆ Call a Tool**
-```bash
-fastmcp call https://test.workspacemcp.com/mcp \
-  search_gmail_messages query="is:unread"
-```
-<sub>Execute a tool with key=value arguments</sub>
-
-</td>
-</tr>
-<tr>
-<td width="50%" align="center">
-
-**▶ Inspect Server**
-```bash
-fastmcp inspect fastmcp_server.py
-```
-<sub>Print tools, resources, and prompts summary</sub>
-
-</td>
-<td width="50%" align="center">
-
-**◆ Install into Clients**
-```bash
-fastmcp install claude-code fastmcp_server.py
+fastmcp inspect fastmcp_server.py                        # print tools, resources, prompts
+fastmcp install claude-code fastmcp_server.py             # one-command client setup
 fastmcp install cursor fastmcp_server.py
-```
-<sub>One-command setup for Claude Code, Cursor, etc.</sub>
-
-</td>
-</tr>
-</table>
-
-<details>
-<summary>≡ <b>CLI Usage Details</b> <sub><sup>← Complete reference</sup></sub></summary>
-
-**Authentication:**
-
-OAuth is handled automatically when targeting an HTTP URL. On first use, a browser window opens for Google consent. Use `--auth none` for local development servers that don't require auth.
-
-```bash
-fastmcp list https://test.workspacemcp.com/mcp               # OAuth (default)
-fastmcp list https://test.workspacemcp.com/mcp --auth none    # skip auth
-fastmcp list https://test.workspacemcp.com/mcp --auth "Bearer sk-..."  # bearer token
-```
-
-**Examples:**
-```bash
-# List tools with full input schemas
-fastmcp list https://test.workspacemcp.com/mcp --input-schema
-
-# Call a tool with complex arguments
-fastmcp call https://test.workspacemcp.com/mcp search_gmail_messages \
-  query="is:unread" max_results=5
-
-# JSON output for scripting
-fastmcp list https://test.workspacemcp.com/mcp --json | jq '.tools[] | .name'
-
-# Discover servers already configured in your editors
-fastmcp discover
+fastmcp discover                                          # find servers configured in editors
 ```
 
 See `fastmcp --help` or the [FastMCP CLI docs](https://gofastmcp.com/cli) for the full command reference.
@@ -831,7 +757,7 @@ cp .env.oauth21 .env
 <tr>
 <td colspan="3">
 
-<details>
+<details open>
 <summary>📖 <b>Credential Loading Details</b> <sub><sup>← Understanding priority & best practices</sup></sub></summary>
 
 **Loading Priority**
@@ -921,7 +847,7 @@ cp .env.oauth21 .env
 | `batch_modify_gmail_message_labels` | Complete | Batch modify labels |
 | `start_google_auth` | Complete | Legacy OAuth 2.0 auth (disabled when OAuth 2.1 is enabled) |
 
-<details>
+<details open>
 <summary><b>📎 Email Attachments</b> <sub><sup>← Send emails with files</sup></sub></summary>
 
 Both `send_gmail_message` and `draft_gmail_message` support attachments via two methods:
@@ -945,7 +871,7 @@ attachments=[{
 
 </details>
 
-<details>
+<details open>
 <summary><b>📥 Downloaded Attachment Storage</b> <sub><sup>← Where downloaded files are saved</sup></sub></summary>
 
 When downloading Gmail attachments (`get_gmail_attachment_content`) or Drive files (`get_drive_file_download_url`), files are saved to a persistent local directory rather than a temporary folder in the working directory.
@@ -1143,7 +1069,7 @@ If you are unable to for some reason, you can configure it manually via `claude_
 
 **Manual Claude Configuration (Alternative)**
 
-<details>
+<details open>
 <summary>📝 <b>Claude Desktop JSON Config</b> <sub><sup>← Click for manual setup instructions</sup></sub></summary>
 
 1. Open Claude Desktop Settings → Developer → Edit Config
@@ -1260,7 +1186,7 @@ uv run main.py --transport streamable-http
 
 If `MCP_ENABLE_OAUTH21` is not set to `true`, the server will use legacy authentication, which is suitable for clients that do not support OAuth 2.1.
 
-<details>
+<details open>
 <summary>🔐 <b>How the FastMCP GoogleProvider handles OAuth</b> <sub><sup>← Advanced OAuth 2.1 details</sup></sub></summary>
 
 FastMCP ships a native `GoogleProvider` that we now rely on directly. It solves the two tricky parts of using Google OAuth with MCP clients:
@@ -1340,7 +1266,7 @@ export WORKSPACE_MCP_OAUTH_PROXY_VALKEY_PORT=6379
 > Valkey support is optional. Install `workspace-mcp[valkey]` (or `py-key-value-aio[valkey]`) only if you enable the Valkey backend.
 > Windows: building `valkey-glide` from source requires MSVC C++ build tools with C11 support. If you see `aws-lc-sys` C11 errors, set `CFLAGS=/std:c11`.
 
-<details>
+<details open>
 <summary>🔐 <b>Valkey/Redis Configuration Options</b></summary>
 
 | Variable | Default | Description |
@@ -1401,7 +1327,7 @@ uv run main.py --transport streamable-http
 
 > **✅ Recommended**: VS Code MCP extension properly supports the full MCP specification. **Always use HTTP transport mode** for proper OAuth 2.1 authentication.
 
-<details>
+<details open>
 <summary>🆚 <b>VS Code Configuration</b> <sub><sup>← Setup for VS Code MCP extension</sup></sub></summary>
 
 ```json
@@ -1422,7 +1348,7 @@ uv run main.py --transport streamable-http
 
 > **✅ Recommended**: Claude Code is a modern MCP client that properly supports the full MCP specification. **Always use HTTP transport mode** with Claude Code for proper OAuth 2.1 authentication and multi-user support.
 
-<details>
+<details open>
 <summary>🆚 <b>Claude Code Configuration</b> <sub><sup>← Setup for Claude Code MCP support</sup></sub></summary>
 
 ```bash
@@ -1462,7 +1388,7 @@ You also have options for:
 - The redirect URI must exactly match what's configured in your Google Cloud Console
 - Your reverse proxy must forward OAuth-related requests (`/oauth2callback`, `/oauth2/*`, `/.well-known/*`) to the MCP server
 
-<details>
+<details open>
 <summary>🚀 <b>Advanced uvx Commands</b> <sub><sup>← More startup options</sup></sub></summary>
 
 ```bash
@@ -1495,7 +1421,7 @@ uv run main.py
 
 **Development Installation (For Contributors)**:
 
-<details>
+<details open>
 <summary>🔧 <b>Developer Setup JSON</b> <sub><sup>← For contributors & customization</sup></sub></summary>
 
 ```json
