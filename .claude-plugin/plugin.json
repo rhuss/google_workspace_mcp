@@ -22,31 +22,31 @@
     },
     "tools": {
       "title": "Services to enable",
-      "description": "Comma-separated list: gmail, drive, calendar, docs, sheets, chat, forms, slides, tasks, contacts, search, appscript. Leave blank for all.",
+      "description": "Comma-separated list: gmail, drive, calendar, docs, sheets, chat, forms, slides, tasks, contacts, search, appscript. Leave empty for all.",
       "type": "string",
       "sensitive": false,
-      "required": false
+      "required": true
     },
     "tool_tier": {
       "title": "Tool tier",
-      "description": "core, extended, or complete. Leave blank for all tools.",
+      "description": "core, extended, or complete. Leave empty for all tools.",
       "type": "string",
       "sensitive": false,
-      "required": false
+      "required": true
     },
     "read_only": {
       "title": "Read-only mode",
-      "description": "Restrict to read-only scopes (no send, create, delete)",
-      "type": "boolean",
+      "description": "true to restrict to read-only scopes. Leave empty for full access.",
+      "type": "string",
       "sensitive": false,
-      "required": false
+      "required": true
     },
     "permissions": {
       "title": "Per-service permissions",
-      "description": "Space-separated service:level pairs. Example: gmail:send drive:readonly. Gmail levels: readonly, organize, drafts, send, full. Other services: readonly, full. Mutually exclusive with read-only and tools.",
+      "description": "Space-separated service:level pairs. Example: gmail:send drive:readonly. Gmail levels: readonly, organize, drafts, send, full. Other services: readonly, full. Mutually exclusive with read-only and tools. Leave empty for full access.",
       "type": "string",
       "sensitive": false,
-      "required": false
+      "required": true
     }
   },
   "mcpServers": {
