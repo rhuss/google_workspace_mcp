@@ -19,12 +19,19 @@
       "type": "string",
       "sensitive": true,
       "required": true
+    },
+    "server_args": {
+      "title": "Server arguments",
+      "description": "CLI arguments for the MCP server. Examples: --tools gmail drive, --tool-tier core, --read-only, --permissions gmail:send drive:readonly. Leave empty for all tools with full access.",
+      "type": "string",
+      "sensitive": false,
+      "required": true
     }
   },
   "mcpServers": {
     "google-workspace": {
       "command": "uv",
-      "args": ["run", "--directory", "${CLAUDE_PLUGIN_ROOT}", "main.py"],
+      "args": ["run", "--directory", "${CLAUDE_PLUGIN_ROOT}", "main.py", "${user_config.server_args}"],
       "env": {
         "GOOGLE_OAUTH_CLIENT_ID": "${user_config.google_oauth_client_id}",
         "GOOGLE_OAUTH_CLIENT_SECRET": "${user_config.google_oauth_client_secret}"
