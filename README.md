@@ -125,37 +125,21 @@ Workspace MCP is the single most complete MCP server that integrates all major G
 
 > Set credentials → pick a launch command → connect your client
 
-<table>
-<tr>
-<td width="40%" valign="top">
-
-**Credentials** &ensp; <sub>[full setup →](#-credential-configuration)</sub>
 ```bash
+# 1. Credentials
 export GOOGLE_OAUTH_CLIENT_ID="..."
 export GOOGLE_OAUTH_CLIENT_SECRET="..."
+
+# 2. Launch — pick a tier
+uvx workspace-mcp --tool-tier core       # essential tools
+uvx workspace-mcp --tool-tier extended   # core + management ops
+uvx workspace-mcp --tool-tier complete   # everything
+
+# Or cherry-pick services
+uv run main.py --tools gmail drive calendar
 ```
 
-</td>
-<td width="30%" valign="top">
-
-**Launch** &ensp; <sub>[more options →](#start-the-server)</sub>
-```bash
-uvx workspace-mcp --tool-tier core
-uv run main.py --tools gmail drive
-```
-
-</td>
-<td width="30%" valign="top">
-
-**Tiers** &ensp; <sub>[details →](#tool-tiers)</sub>
-
-`core` — Essential tools<br>
-`extended` — Core + extras<br>
-`complete` — Everything
-
-</td>
-</tr>
-</table>
+<sub>[Credential setup →](#-credential-configuration) · [All launch options →](#start-the-server) · [Tier details →](#tool-tiers)</sub>
 
 <details>
 <summary><b>Environment Variable Reference</b></summary>
