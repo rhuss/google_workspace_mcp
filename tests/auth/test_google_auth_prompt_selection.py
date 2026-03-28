@@ -1,5 +1,7 @@
 from types import SimpleNamespace
 
+from google.auth.exceptions import RefreshError
+
 from auth.google_auth import _determine_oauth_prompt
 
 
@@ -55,8 +57,8 @@ def test_prompt_consent_when_credentials_revoked(monkeypatch):
     prompt must be 'consent' so Google performs full re-authorization."""
     required_scopes = ["scope.a", "scope.b"]
 
-    def _raise_on_refresh(_self):
-        raise Exception("invalid_grant: Token has been revoked")
+    def _raise_on_refresh(_self, _request):
+        raise RefreshError("invalid_grant: Token has been revoked")
 
     creds = _credentials_with_scopes(required_scopes, valid=False)
     creds.refresh = _raise_on_refresh.__get__(creds)
