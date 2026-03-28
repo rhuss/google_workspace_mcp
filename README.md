@@ -141,8 +141,9 @@ uv run main.py --tools gmail drive calendar
 
 <sub>[Credential setup →](#-credential-configuration) · [All launch options →](#start-the-server) · [Tier details →](#tool-tiers)</sub>
 
-<details>
+<details open>
 <summary><b>Environment Variable Reference</b></summary>
+<sub>
 
 | Variable | | Purpose |
 |----------|:---:|---------|
@@ -174,8 +175,9 @@ uv run main.py --tools gmail drive calendar
 | `GOOGLE_PSE_API_KEY` | | API key for Programmable Search Engine |
 | `GOOGLE_PSE_ENGINE_ID` | | Search Engine ID for PSE |
 
-<sub>&ast;Required for development only. Claude Desktop stores credentials securely in the OS keychain — set them once in the extension pane.</sub>
+&ast;Required for development only. Claude Desktop stores credentials securely in the OS keychain — set them once in the extension pane.
 
+</sub>
 </details>
 
 ---
@@ -197,210 +199,32 @@ uv run main.py --tools gmail drive calendar
 
 ### Prerequisites
 
-- **Python 3.10+**
-- **[uvx](https://github.com/astral-sh/uv)** (for instant installation) or [uv](https://github.com/astral-sh/uv) (for development)
-- **Google Cloud Project** with OAuth 2.0 credentials
+**Python 3.10+** · **[uv/uvx](https://github.com/astral-sh/uv)** · **Google Cloud Project** with OAuth 2.0 credentials
 
 ### Configuration
 
 <details open>
-<summary><b>Google Cloud Setup</b> <sub><sup>← OAuth 2.0 credentials & API enablement</sup></sub></summary>
+<summary><b>Google Cloud Setup</b></summary>
 
-<table>
-<tr>
-<td width="33%" align="center">
+1. **Create Project** — [Open Console →](https://console.cloud.google.com/) → Create new project
+2. **Create OAuth Credentials** — APIs & Services → Credentials → Create Credentials → OAuth Client ID
+   - Choose **Desktop Application** (no redirect URIs needed!)
+   - Download and note your Client ID & Client Secret
+3. **Enable APIs** — APIs & Services → Library, then enable each service:
 
-**1. Create Project**
-```text
-console.cloud.google.com
+   | | | | |
+   |:--|:--|:--|:--|
+   | [Calendar](https://console.cloud.google.com/flows/enableapi?apiid=calendar-json.googleapis.com) | [Drive](https://console.cloud.google.com/flows/enableapi?apiid=drive.googleapis.com) | [Gmail](https://console.cloud.google.com/flows/enableapi?apiid=gmail.googleapis.com) | [Docs](https://console.cloud.google.com/flows/enableapi?apiid=docs.googleapis.com) |
+   | [Sheets](https://console.cloud.google.com/flows/enableapi?apiid=sheets.googleapis.com) | [Slides](https://console.cloud.google.com/flows/enableapi?apiid=slides.googleapis.com) | [Forms](https://console.cloud.google.com/flows/enableapi?apiid=forms.googleapis.com) | [Tasks](https://console.cloud.google.com/flows/enableapi?apiid=tasks.googleapis.com) |
+   | [Chat](https://console.cloud.google.com/flows/enableapi?apiid=chat.googleapis.com) | [People](https://console.cloud.google.com/flows/enableapi?apiid=people.googleapis.com) | [Custom Search](https://console.cloud.google.com/flows/enableapi?apiid=customsearch.googleapis.com) | [Apps Script](https://console.cloud.google.com/flows/enableapi?apiid=script.googleapis.com) |
 
-→ Create new project
-→ Note project name
-```
-<sub>[Open Console →](https://console.cloud.google.com/)</sub>
-
-</td>
-<td width="33%" align="center">
-
-**2. OAuth Credentials**
-```text
-APIs & Services → Credentials
-→ Create Credentials
-→ OAuth Client ID
-→ Desktop Application
-```
-<sub>Download & save credentials</sub>
-
-</td>
-<td width="34%" align="center">
-
-**3. Enable APIs**
-```text
-APIs & Services → Library
-
-Search & enable:
-Calendar, Drive, Gmail,
-Docs, Sheets, Slides,
-Forms, Tasks, People,
-Chat, Search
-```
-<sub>See quick links below</sub>
-
-</td>
-</tr>
-<tr>
-<td colspan="3">
-
-<details open>
-<summary><b>OAuth Credential Setup Guide</b> <sub><sup>← Step-by-step instructions</sup></sub></summary>
-
-**Complete Setup Process:**
-
-1. **Create OAuth 2.0 Credentials** - Visit [Google Cloud Console](https://console.cloud.google.com/)
-   - Create a new project (or use existing)
-   - Navigate to **APIs & Services → Credentials**
-   - Click **Create Credentials → OAuth Client ID**
-   - Choose **Desktop Application** as the application type (no redirect URIs needed!)
-   - Download credentials and note the Client ID and Client Secret
-
-2. **Enable Required APIs** - In **APIs & Services → Library**
-   - Search for and enable each required API
-   - Or use the quick links below for one-click enabling
-
-3. **Configure Environment** - Set your credentials:
+4. **Set Credentials** — see [Environment Variable Reference](#quick-start) above, or:
    ```bash
    export GOOGLE_OAUTH_CLIENT_ID="your-client-id"
    export GOOGLE_OAUTH_CLIENT_SECRET="your-secret"
    ```
 
-[Full Documentation →](https://developers.google.com/workspace/guides/auth-overview)
-
-</details>
-
-</td>
-</tr>
-</table>
-
-<details open>
-  <summary><b>Quick API Enable Links</b> <sub><sup>← One-click enable each Google API</sup></sub></summary>
-  You can enable each one by clicking the links below (make sure you're logged into the Google Cloud Console and have the correct project selected):
-
-* [Enable Google Calendar API](https://console.cloud.google.com/flows/enableapi?apiid=calendar-json.googleapis.com)
-* [Enable Google Drive API](https://console.cloud.google.com/flows/enableapi?apiid=drive.googleapis.com)
-* [Enable Gmail API](https://console.cloud.google.com/flows/enableapi?apiid=gmail.googleapis.com)
-* [Enable Google Docs API](https://console.cloud.google.com/flows/enableapi?apiid=docs.googleapis.com)
-* [Enable Google Sheets API](https://console.cloud.google.com/flows/enableapi?apiid=sheets.googleapis.com)
-* [Enable Google Slides API](https://console.cloud.google.com/flows/enableapi?apiid=slides.googleapis.com)
-* [Enable Google Forms API](https://console.cloud.google.com/flows/enableapi?apiid=forms.googleapis.com)
-* [Enable Google Tasks API](https://console.cloud.google.com/flows/enableapi?apiid=tasks.googleapis.com)
-* [Enable Google Chat API](https://console.cloud.google.com/flows/enableapi?apiid=chat.googleapis.com)
-* [Enable Google People API](https://console.cloud.google.com/flows/enableapi?apiid=people.googleapis.com)
-* [Enable Google Custom Search API](https://console.cloud.google.com/flows/enableapi?apiid=customsearch.googleapis.com)
-* [Enable Google Apps Script API](https://console.cloud.google.com/flows/enableapi?apiid=script.googleapis.com)
-
-</details>
-
-</details>
-
-1.1. **Credentials**: See [Credential Configuration](#credential-configuration) for detailed setup options
-
-2. **Environment Configuration**:
-
-<details open>
-<summary>◆ <b>Environment Variables</b> <sub><sup>← Configure your runtime environment</sup></sub></summary>
-
-<table>
-<tr>
-<td width="33%" align="center">
-
-**◆ Development Mode**
-```bash
-export OAUTHLIB_INSECURE_TRANSPORT=1
-```
-<sub>Allows HTTP redirect URIs</sub>
-
-</td>
-<td width="33%" align="center">
-
-**@ Default User**
-```bash
-export USER_GOOGLE_EMAIL=\
-  your.email@gmail.com
-```
-<sub>Single-user authentication</sub>
-
-</td>
-<td width="34%" align="center">
-
-**◆ Custom Search**
-```bash
-export GOOGLE_PSE_API_KEY=xxx
-export GOOGLE_PSE_ENGINE_ID=yyy
-```
-<sub>Optional: Search API setup</sub>
-
-</td>
-</tr>
-</table>
-
-</details>
-
-3. **Server Configuration**:
-
-<details open>
-<summary>◆ <b>Server Settings</b> <sub><sup>← Customize ports, URIs & proxies</sup></sub></summary>
-
-<table>
-<tr>
-<td width="33%" align="center">
-
-**◆ Base Configuration**
-```bash
-export WORKSPACE_MCP_BASE_URI=
-  http://localhost
-export WORKSPACE_MCP_PORT=8000
-export WORKSPACE_MCP_HOST=0.0.0.0  # Use 127.0.0.1 for localhost-only
-```
-<sub>Server URL & port settings</sub>
-
-</td>
-<td width="33%" align="center">
-
-**↻ Proxy Support**
-```bash
-export MCP_ENABLE_OAUTH21=
-  true
-```
-<sub>Leverage multi-user OAuth2.1 clients</sub>
-
-</td>
-<td width="34%" align="center">
-
-**@ Default Email**
-```bash
-export USER_GOOGLE_EMAIL=\
-  your.email@gmail.com
-```
-<sub>Skip email in auth flows in single user mode</sub>
-
-</td>
-</tr>
-</table>
-
-<details open>
-<summary>≡ <b>Configuration Details</b> <sub><sup>← Learn more about each setting</sup></sub></summary>
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `WORKSPACE_MCP_BASE_URI` | Base server URI (no port) | `http://localhost` |
-| `WORKSPACE_MCP_PORT` | Server listening port | `8000` |
-| `WORKSPACE_MCP_HOST` | Server bind host | `0.0.0.0` |
-| `WORKSPACE_EXTERNAL_URL` | External URL for reverse proxy setups | None |
-| `WORKSPACE_ATTACHMENT_DIR` | Directory for downloaded attachments | `~/.workspace-mcp/attachments/` |
-| `GOOGLE_OAUTH_REDIRECT_URI` | Override OAuth callback URL | Auto-constructed |
-| `USER_GOOGLE_EMAIL` | Default auth email | None |
-
-</details>
+<sub>[Full OAuth documentation →](https://developers.google.com/workspace/guides/auth-overview) · [Credential setup details →](#-credential-configuration)</sub>
 
 </details>
 
