@@ -295,14 +295,16 @@ class BatchOperationManager:
             description = f"paragraph style {op['start_index']}-{op['end_index']} ({', '.join(style_changes)})"
 
         elif op_type == "update_table_cell_style":
-            is_valid, error_msg = self.validation_manager.validate_table_cell_style_params(
-                background_color=op.get("background_color"),
-                border_color=op.get("border_color"),
-                border_width=op.get("border_width"),
-                row_index=op.get("row_index"),
-                column_index=op.get("column_index"),
-                row_span=op.get("row_span"),
-                column_span=op.get("column_span"),
+            is_valid, error_msg = (
+                self.validation_manager.validate_table_cell_style_params(
+                    background_color=op.get("background_color"),
+                    border_color=op.get("border_color"),
+                    border_width=op.get("border_width"),
+                    row_index=op.get("row_index"),
+                    column_index=op.get("column_index"),
+                    row_span=op.get("row_span"),
+                    column_span=op.get("column_span"),
+                )
             )
             if not is_valid:
                 raise ValueError(error_msg)

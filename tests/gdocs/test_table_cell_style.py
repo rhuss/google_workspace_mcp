@@ -180,9 +180,7 @@ class TestBatchManagerIntegration:
     def test_supported_operations_include_table_cell_style(self, manager):
         supported = manager.get_supported_operations()["supported_operations"]
         assert "update_table_cell_style" in supported
-        assert supported["update_table_cell_style"]["required"] == [
-            "table_start_index"
-        ]
+        assert supported["update_table_cell_style"]["required"] == ["table_start_index"]
 
 
 class TestPublicToolWiring:
