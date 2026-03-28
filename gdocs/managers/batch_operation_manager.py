@@ -133,8 +133,9 @@ class BatchOperationManager:
             return True, msg, metadata
 
         except Exception as e:
-            logger.error(f"Failed to execute batch operations: {str(e)}")
-            return False, f"Batch operation failed: {str(e)}", {}
+            error_msg = self._rewrite_execution_error(str(e), operations)
+            logger.error(f"Failed to execute batch operations: {error_msg}")
+            return False, error_msg, {}
 
     async def _validate_and_build_requests(
         self, operations: list[dict[str, Any]]
@@ -703,6 +704,29 @@ class BatchOperationManager:
             summary += f" and {remaining} more operation{'s' if remaining > 1 else ''}"
 
         return summary
+
+    def _rewrite_execution_error(
+        self, error_msg: str, operations: list[dict[str, Any]]
+    ) -> str:
+        """
+        Rewrite common API failures into actionable guidance for tool callers.
+        """
+        lowered = error_msg.lower()
+        requested_header_footer_creation = any(
+            op.get("type") == "create_header_footer" for op in operations
+        )
+
+        if requested_header_footer_creation and "already exists" in lowered and (
+            "createheader" in lowered or "createfooter" in lowered
+        ):
+            return (
+                "Batch operation failed: the requested header/footer already exists. "
+                "For normal header or footer text, use update_doc_headers_footers "
+                "instead of batch_update_doc with create_header_footer. "
+                "Reserve create_header_footer for advanced section-break layouts."
+            )
+
+        return f"Batch operation failed: {error_msg}"
 
     def get_supported_operations(self) -> dict[str, Any]:
         """

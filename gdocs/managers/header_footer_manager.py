@@ -36,6 +36,18 @@ class HeaderFooterManager:
             service: Google Docs API service instance
         """
         self.service = service
+        self._style_field_map = {
+            "header": {
+                "DEFAULT": "defaultHeaderId",
+                "FIRST_PAGE_ONLY": "firstPageHeaderId",
+                "EVEN_PAGE": "evenPageHeaderId",
+            },
+            "footer": {
+                "DEFAULT": "defaultFooterId",
+                "FIRST_PAGE_ONLY": "firstPageFooterId",
+                "EVEN_PAGE": "evenPageFooterId",
+            },
+        }
 
     async def update_header_footer_content(
         self,
@@ -80,8 +92,10 @@ class HeaderFooterManager:
                 doc, section_type, header_footer_type
             )
 
-            if not target_section:
-                created_id = await self._create_missing_section(document_id, section_type)
+            if not section_id:
+                created_id = await self._create_missing_section(
+                    document_id, section_type, header_footer_type
+                )
                 if not created_id:
                     return (
                         False,
@@ -137,8 +151,11 @@ class HeaderFooterManager:
         else:
             sections = doc.get("footers", {})
 
-        # Try to match section based on header_footer_type
-        # Google Docs API typically uses section IDs that correspond to types
+        style_section_id = self._resolve_section_id_from_styles(
+            doc, section_type, header_footer_type
+        )
+        if style_section_id:
+            return sections.get(style_section_id), style_section_id
 
         # First, try to find an exact match based on common patterns
         for section_id, section_data in sections.items():
@@ -168,6 +185,28 @@ class HeaderFooterManager:
 
         return None, None
 
+    def _resolve_section_id_from_styles(
+        self, doc: dict[str, Any], section_type: str, header_footer_type: str
+    ) -> Optional[str]:
+        """Resolve a header/footer segment ID from document or section styles."""
+        style_field = self._style_field_map.get(section_type, {}).get(
+            header_footer_type
+        )
+        if not style_field:
+            return None
+
+        # SectionStyle overrides DocumentStyle for the first section.
+        for element in doc.get("body", {}).get("content", []):
+            section_style = element.get("sectionBreak", {}).get("sectionStyle", {})
+            if not section_style:
+                continue
+            section_id = section_style.get(style_field)
+            if section_id:
+                return section_id
+            break
+
+        return doc.get("documentStyle", {}).get(style_field)
+
     async def _replace_section_content(
         self,
         document_id: str,
@@ -186,17 +225,14 @@ class HeaderFooterManager:
         Returns:
             True if successful, False otherwise
         """
-        content_elements = section.get("content", [])
-        if not content_elements:
-            return False
-
+        content_elements = section.get("content", []) if section else []
         first_para = self._find_first_paragraph(content_elements)
-        if not first_para:
-            start_index = 0
-            end_index = 0
-        else:
+        if first_para:
             start_index = first_para.get("startIndex", 0)
             end_index = first_para.get("endIndex", 0)
+        else:
+            start_index = 0
+            end_index = 0
 
         # Build requests to replace content
         requests = []
@@ -212,13 +248,25 @@ class HeaderFooterManager:
             )
 
         # Insert new content
-        requests.append(
-            create_insert_text_request(
-                start_index,
-                new_content,
-                segment_id=section_id,
+        if first_para:
+            requests.append(
+                create_insert_text_request(
+                    start_index,
+                    new_content,
+                    segment_id=section_id,
+                )
             )
-        )
+        else:
+            # Newly created or empty segments may not expose paragraph content yet.
+            # Append directly to the segment so callers do not need a follow-up create.
+            requests.append(
+                create_insert_text_request(
+                    None,
+                    new_content,
+                    segment_id=section_id,
+                    end_of_segment=True,
+                )
+            )
 
         try:
             await asyncio.to_thread(
@@ -233,10 +281,12 @@ class HeaderFooterManager:
             return False
 
     async def _create_missing_section(
-        self, document_id: str, section_type: str
+        self, document_id: str, section_type: str, header_footer_type: str = "DEFAULT"
     ) -> Optional[str]:
         """Create a missing header/footer and return its new segment ID."""
-        request = create_create_header_footer_request(section_type, "DEFAULT")
+        request = create_create_header_footer_request(
+            section_type, header_footer_type
+        )
         try:
             result = await asyncio.to_thread(
                 self.service.documents()
@@ -244,6 +294,14 @@ class HeaderFooterManager:
                 .execute
             )
         except Exception as e:
+            if "already exists" in str(e).lower():
+                try:
+                    doc = await self._get_document(document_id)
+                    return self._resolve_section_id_from_styles(
+                        doc, section_type, header_footer_type
+                    )
+                except Exception:
+                    pass
             logger.error(f"Failed to create missing {section_type}: {str(e)}")
             return None
 

@@ -182,14 +182,18 @@ def _extract_cell_text(cell: dict[str, Any]) -> str:
 
 def _parse_segment(segment_data: dict[str, Any]) -> dict[str, Any]:
     """Parse a document segment (header/footer)."""
+    content = segment_data.get("content", [])
+    text_parts = []
+    for element in content:
+        if "paragraph" in element:
+            text_parts.append(_extract_paragraph_text(element["paragraph"]))
+
     return {
-        "content": segment_data.get("content", []),
-        "start_index": segment_data.get("content", [{}])[0].get("startIndex", 0)
-        if segment_data.get("content")
-        else 0,
-        "end_index": segment_data.get("content", [{}])[-1].get("endIndex", 0)
-        if segment_data.get("content")
-        else 0,
+        "content": content,
+        "start_index": content[0].get("startIndex", 0) if content else 0,
+        "end_index": content[-1].get("endIndex", 0) if content else 0,
+        "text_preview": "".join(text_parts)[:100],
+        "element_count": len(content),
     }
 
 

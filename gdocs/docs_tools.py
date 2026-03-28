@@ -10,11 +10,12 @@ import io
 import re
 from typing import List, Dict, Any, Optional
 
+from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaIoBaseDownload, MediaIoBaseUpload
 
 # Auth & server utilities
 from auth.service_decorator import require_google_service, require_multiple_services
-from core.utils import extract_office_xml_text, handle_http_errors
+from core.utils import extract_office_xml_text, handle_http_errors, UserInputError
 from core.server import server
 from core.comments import create_comment_tools
 
@@ -47,6 +48,7 @@ from gdocs.docs_markdown import (
     format_comments_appendix,
     parse_drive_comments,
 )
+from gdocs.operation_schemas import BatchDocOperations
 
 # Import operation managers for complex business logic
 from gdocs.managers import (
@@ -429,6 +431,11 @@ async def modify_doc_text(
     TIP: To append text to the end of the document without calculating indices,
     set end_of_segment=true. This avoids index calculation errors.
 
+    For ordinary header/footer text, prefer update_doc_headers_footers.
+    Only pass segment_id when you already have a real header/footer/footnote
+    segment ID from inspect_doc_structure output. Do not guess IDs such as
+    "kix.header" or "kix.footer".
+
     Args:
         user_google_email: User's Google email address
         document_id: ID of the document to update
@@ -646,11 +653,14 @@ async def modify_doc_text(
             f"Applied formatting ({', '.join(format_details)}) to range {format_start}-{format_end}"
         )
 
-    await asyncio.to_thread(
-        service.documents()
-        .batchUpdate(documentId=document_id, body={"requests": requests})
-        .execute
-    )
+    try:
+        await asyncio.to_thread(
+            service.documents()
+            .batchUpdate(documentId=document_id, body={"requests": requests})
+            .execute
+        )
+    except HttpError as error:
+        raise _rewrite_modify_doc_text_http_error(error, segment_id) from error
 
     link = f"https://docs.google.com/document/d/{document_id}/edit"
     operation_summary = "; ".join(operations)
@@ -904,7 +914,12 @@ async def update_doc_headers_footers(
     header_footer_type: str = "DEFAULT",
 ) -> str:
     """
-    Creates or updates headers and footers in a Google Doc.
+    Safely creates or updates header/footer text in a Google Doc.
+
+    This is the default tool for header/footer content. Do NOT use
+    batch_update_doc with create_header_footer just to set header/footer text;
+    that low-level operation is only for advanced section-break workflows and
+    can fail when the default header/footer already exists.
 
     This tool handles both creation and update in one call:
     - If the header/footer does not exist, it is automatically created first.
@@ -964,10 +979,13 @@ async def batch_update_doc(
     service: Any,
     user_google_email: str,
     document_id: str,
-    operations: List[Dict[str, Any]],
+    operations: BatchDocOperations,
 ) -> str:
     """
-    Executes multiple document operations in a single atomic batch update.
+    Executes multiple low-level document operations in a single atomic batch update.
+
+    For normal header/footer text, prefer update_doc_headers_footers.
+    Only use create_header_footer here for advanced section-break layouts.
 
     RECOMMENDED WORKFLOW FOR BUILDING DOCUMENTS:
     =============================================
@@ -985,9 +1003,10 @@ async def batch_update_doc(
       ]
 
     PHASE 2 - CREATE HEADERS/FOOTERS (if needed):
-      Use update_doc_headers_footers tool (it auto-creates if missing).
-      Or include create_header_footer operations in a batch, then use
-      update_doc_headers_footers to set content.
+      For normal header/footer text, use update_doc_headers_footers
+      (it auto-creates if missing and writes the content for you).
+      Only include create_header_footer operations in a batch when you are
+      intentionally managing advanced section-break-specific layouts.
 
     PHASE 3 - INSPECT STRUCTURE:
       Call inspect_doc_structure with detailed=true to get exact start_index
@@ -1097,6 +1116,8 @@ async def batch_update_doc(
       create_header_footer
                        - required: section_type ('header'|'footer')
                          optional: header_footer_type, section_break_index
+                         Advanced only. For ordinary header/footer text, use
+                         update_doc_headers_footers instead.
       insert_image     - required: image_uri (str)
                          optional: index, width, height, tab_id, segment_id,
                                    end_of_segment
@@ -1139,7 +1160,16 @@ async def batch_update_doc(
     Returns:
         str: Confirmation message with batch results and document length for chaining
     """
-    logger.debug(f"[batch_update_doc] Doc={document_id}, operations={len(operations)}")
+    normalized_operations = [
+        operation.model_dump(exclude_none=True)
+        if hasattr(operation, "model_dump")
+        else operation
+        for operation in operations
+    ]
+
+    logger.debug(
+        f"[batch_update_doc] Doc={document_id}, operations={len(normalized_operations)}"
+    )
 
     # Input validation
     validator = ValidationManager()
@@ -1148,7 +1178,7 @@ async def batch_update_doc(
     if not is_valid:
         return f"Error: {error_msg}"
 
-    is_valid, error_msg = validator.validate_batch_operations(operations)
+    is_valid, error_msg = validator.validate_batch_operations(normalized_operations)
     if not is_valid:
         return f"Error: {error_msg}"
 
@@ -1156,7 +1186,7 @@ async def batch_update_doc(
     batch_manager = BatchOperationManager(service)
 
     success, message, metadata = await batch_manager.execute_batch_operations(
-        document_id, operations
+        document_id, normalized_operations
     )
 
     if success:
@@ -1202,6 +1232,7 @@ async def inspect_doc_structure(
     - total_length: Maximum safe index for insertion
     - tables: Number of existing tables
     - table_details: Position and dimensions of each table
+    - headers / footers: Real segment IDs and previews for header/footer editing
     - tabs: List of available tabs in the document (if no tab_id specified)
 
     WORKFLOW FOR TABLE INSERTION:
@@ -1215,6 +1246,11 @@ async def inspect_doc_structure(
     call this tool with detailed=true to get exact start_index and end_index
     for every paragraph. Use those indices directly in format_text and
     update_paragraph_style operations in a second batch_update_doc call.
+
+    HEADER/FOOTER WORKFLOW:
+    For ordinary header/footer text, use update_doc_headers_footers.
+    If you need low-level segment editing, call this tool first and use the
+    real segment_id values returned under headers/footers. Do not invent IDs.
 
     The detailed output includes elements[].start_index and elements[].end_index
     with text_preview for each paragraph, making it easy to identify which
@@ -1268,10 +1304,10 @@ async def inspect_doc_structure(
     analysis_doc["body"] = target_content
     analysis_doc["namedRanges"] = analysis_named_ranges
 
+    structure = parse_document_structure(analysis_doc)
+
     if detailed:
         # Return full parsed structure
-        structure = parse_document_structure(analysis_doc)
-
         # Simplify for JSON serialization
         result = {
             "title": structure["title"],
@@ -1359,6 +1395,21 @@ async def inspect_doc_structure(
                     }
                 )
 
+    if structure["headers"]:
+        result["headers"] = _build_segment_inspection_entries(doc, structure, "header")
+
+    else:
+        header_entries = _build_segment_inspection_entries(doc, structure, "header")
+        if header_entries:
+            result["headers"] = header_entries
+
+    if structure["footers"]:
+        result["footers"] = _build_segment_inspection_entries(doc, structure, "footer")
+    else:
+        footer_entries = _build_segment_inspection_entries(doc, structure, "footer")
+        if footer_entries:
+            result["footers"] = footer_entries
+
     # Always include available tabs if no tab_id was specified
     if not tab_id:
 
@@ -1382,6 +1433,93 @@ async def inspect_doc_structure(
 
     link = f"https://docs.google.com/document/d/{document_id}/edit"
     return f"Document structure analysis for {document_id}:\n\n{json.dumps(result, indent=2)}\n\nLink: {link}"
+
+
+def _rewrite_modify_doc_text_http_error(
+    error: HttpError, segment_id: Optional[str]
+) -> Exception:
+    """
+    Convert common low-level Docs API failures into actionable caller guidance.
+    """
+    details = str(error)
+    lowered = details.lower()
+
+    if segment_id and "segment with id" in lowered and "was not found" in lowered:
+        return UserInputError(
+            f"segment_id '{segment_id}' was not found. segment_id must be a real "
+            "header/footer/footnote ID returned by inspect_doc_structure; do not "
+            "guess IDs such as 'kix.header'. For ordinary header/footer text, use "
+            "update_doc_headers_footers instead."
+        )
+
+    return error
+
+
+def _build_segment_inspection_entries(
+    doc: dict[str, Any], structure: dict[str, Any], section_type: str
+) -> list[dict[str, Any]]:
+    """
+    Build header/footer inspection entries from both populated segments and style IDs.
+    """
+    parsed_segments = (
+        structure["headers"] if section_type == "header" else structure["footers"]
+    )
+    entries: dict[str, dict[str, Any]] = {}
+
+    for segment_id, segment_info in parsed_segments.items():
+        entries[segment_id] = {
+            "segment_id": segment_id,
+            "start_index": segment_info["start_index"],
+            "end_index": segment_info["end_index"],
+            "content_preview": segment_info.get("text_preview", ""),
+            "element_count": segment_info.get("element_count", 0),
+            "source": "segment_content",
+        }
+
+    style_field_map = {
+        "header": {
+            "DEFAULT": "defaultHeaderId",
+            "FIRST_PAGE_ONLY": "firstPageHeaderId",
+            "EVEN_PAGE": "evenPageHeaderId",
+        },
+        "footer": {
+            "DEFAULT": "defaultFooterId",
+            "FIRST_PAGE_ONLY": "firstPageFooterId",
+            "EVEN_PAGE": "evenPageFooterId",
+        },
+    }
+
+    for variant, style_field in style_field_map[section_type].items():
+        doc_style_id = doc.get("documentStyle", {}).get(style_field)
+        if doc_style_id and doc_style_id not in entries:
+            entries[doc_style_id] = {
+                "segment_id": doc_style_id,
+                "start_index": 0,
+                "end_index": 0,
+                "content_preview": "",
+                "element_count": 0,
+                "source": f"documentStyle.{style_field}",
+                "variant": variant,
+            }
+
+        for element in doc.get("body", {}).get("content", []):
+            section_style = element.get("sectionBreak", {}).get("sectionStyle", {})
+            if not section_style:
+                continue
+            section_id = section_style.get(style_field)
+            if section_id and section_id not in entries:
+                entries[section_id] = {
+                    "segment_id": section_id,
+                    "start_index": 0,
+                    "end_index": 0,
+                    "content_preview": "",
+                    "element_count": 0,
+                    "source": f"sectionStyle.{style_field}",
+                    "variant": variant,
+                }
+            break
+
+    return list(entries.values())
 
 
 @server.tool()
