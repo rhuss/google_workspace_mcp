@@ -7,11 +7,15 @@
   },
   "userConfig": {
     "google_oauth_client_id": {
-      "description": "Google OAuth 2.0 Client ID",
+      "title": "Google OAuth Client ID",
+      "description": "OAuth 2.0 Client ID from Google Cloud Console",
+      "type": "string",
       "sensitive": false
     },
     "google_oauth_client_secret": {
-      "description": "Google OAuth 2.0 Client Secret",
+      "title": "Google OAuth Client Secret",
+      "description": "OAuth 2.0 Client Secret from Google Cloud Console",
+      "type": "string",
       "sensitive": true
     }
   },
