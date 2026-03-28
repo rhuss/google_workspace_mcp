@@ -123,87 +123,87 @@ Workspace MCP is the single most complete MCP server that integrates all major G
 
 ## Quick Start
 
-<details open>
-<summary><b>Quick Reference Card</b> - Essential commands & configs at a glance</summary>
+> Set credentials → pick a launch command → connect your client
 
 <table>
-<tr><td width="33%" valign="top">
+<tr>
+<td width="40%" valign="top">
 
-**Credentials**
+**Credentials** &ensp; <sub>[full setup →](#-credential-configuration)</sub>
 ```bash
 export GOOGLE_OAUTH_CLIENT_ID="..."
 export GOOGLE_OAUTH_CLIENT_SECRET="..."
 ```
-[Full setup →](#credential-configuration)
 
-</td><td width="33%" valign="top">
+</td>
+<td width="30%" valign="top">
 
-**Launch Commands**
+**Launch** &ensp; <sub>[more options →](#start-the-server)</sub>
 ```bash
 uvx workspace-mcp --tool-tier core
 uv run main.py --tools gmail drive
 ```
-[More options →](#start-the-server)
 
-</td><td width="34%" valign="top">
+</td>
+<td width="30%" valign="top">
 
-**Tool Tiers**
-- `core` - Essential tools
-- `extended` - Core + extras
-- `complete` - Everything
-[Details →](#tool-tiers)
+**Tiers** &ensp; <sub>[details →](#tool-tiers)</sub>
 
-</td></tr>
+`core` — Essential tools<br>
+`extended` — Core + extras<br>
+`complete` — Everything
+
+</td>
+</tr>
 </table>
 
-</details>
+<details>
+<summary><b>Environment Variable Reference</b></summary>
 
+| Variable | | Purpose |
+|----------|:---:|---------|
+| **🔐 Authentication** | | |
+| `GOOGLE_OAUTH_CLIENT_ID` | **required** | OAuth client ID from Google Cloud |
+| `GOOGLE_OAUTH_CLIENT_SECRET` | **required** | OAuth client secret |
+| `OAUTHLIB_INSECURE_TRANSPORT` | **required**&ast; | Set to `1` for development — allows `http://` redirect |
+| `USER_GOOGLE_EMAIL` | | Default email for single-user auth |
+| `GOOGLE_CLIENT_SECRET_PATH` | | Custom path to `client_secret.json` |
+| `GOOGLE_MCP_CREDENTIALS_DIR` | | Credential storage directory — default `~/.google_workspace_mcp/credentials` |
+| **🖥️ Server** | | |
+| `WORKSPACE_MCP_BASE_URI` | | Base server URI (no port) — default `http://localhost` |
+| `WORKSPACE_MCP_PORT` | | Listening port — default `8000` |
+| `WORKSPACE_MCP_HOST` | | Bind host — default `0.0.0.0` |
+| `WORKSPACE_EXTERNAL_URL` | | External URL for reverse proxy setups |
+| `WORKSPACE_ATTACHMENT_DIR` | | Downloaded attachments dir — default `~/.workspace-mcp/attachments/` |
+| `WORKSPACE_MCP_URL` | | Remote MCP endpoint URL for CLI |
+| `ALLOWED_FILE_DIRS` | | Colon-separated allowlist for local file reads |
+| **🔑 OAuth 2.1 & Multi-User** | | |
+| `MCP_ENABLE_OAUTH21` | | `true` to enable OAuth 2.1 multi-user support |
+| `EXTERNAL_OAUTH21_PROVIDER` | | `true` for external OAuth flow with bearer tokens |
+| `WORKSPACE_MCP_STATELESS_MODE` | | `true` for stateless container-friendly operation |
+| `GOOGLE_OAUTH_REDIRECT_URI` | | Override OAuth callback URL — default auto-constructed |
+| `OAUTH_CUSTOM_REDIRECT_URIS` | | Comma-separated additional redirect URIs |
+| `OAUTH_ALLOWED_ORIGINS` | | Comma-separated additional CORS origins |
+| `WORKSPACE_MCP_OAUTH_PROXY_STORAGE_BACKEND` | | `memory`, `disk`, or `valkey` — see [storage backends](#oauth-proxy-storage-backends) |
+| `FASTMCP_SERVER_AUTH_GOOGLE_JWT_SIGNING_KEY` | | Custom encryption key for OAuth proxy storage |
+| **🔍 Custom Search** | | |
+| `GOOGLE_PSE_API_KEY` | | API key for Programmable Search Engine |
+| `GOOGLE_PSE_ENGINE_ID` | | Search Engine ID for PSE |
 
+<sub>&ast;Required for development only. Claude Desktop stores credentials securely in the OS keychain — set them once in the extension pane.</sub>
 
-#### Required Configuration
-<details open>
-<summary><b>Environment Variables</b> <sub><sup>← Click to configure in Claude Desktop</sup></sub></summary>
-
-<table>
-<tr><td width="50%" valign="top">
-
-**Required**
-| Variable | Purpose |
-|----------|---------|
-| `GOOGLE_OAUTH_CLIENT_ID` | OAuth client ID from Google Cloud |
-| `GOOGLE_OAUTH_CLIENT_SECRET` | OAuth client secret |
-| `OAUTHLIB_INSECURE_TRANSPORT=1` | Development only (allows `http://` redirect) |
-
-</td><td width="50%" valign="top">
-
-**Optional**
-| Variable | Purpose |
-|----------|---------|
-| `USER_GOOGLE_EMAIL` | Default email for single-user auth |
-| `GOOGLE_PSE_API_KEY` | API key for Custom Search |
-| `GOOGLE_PSE_ENGINE_ID` | Search Engine ID for Custom Search |
-| `MCP_ENABLE_OAUTH21` | Set to `true` for OAuth 2.1 support |
-| `EXTERNAL_OAUTH21_PROVIDER` | Set to `true` for external OAuth flow with bearer tokens (requires OAuth 2.1) |
-| `WORKSPACE_MCP_STATELESS_MODE` | Set to `true` for stateless operation (requires OAuth 2.1) |
-
-</td></tr>
-</table>
-
-Claude Desktop stores these securely in the OS keychain; set them once in the extension pane.
 </details>
 
 ---
 
-### One-Click Claude Desktop Install (Claude Desktop Only, Stdio, Single User)
+### One-Click Claude Desktop Install
 
-1. **Download:** Grab the latest `google_workspace_mcp.dxt` from the “Releases” page
-2. **Install:** Double-click the file – Claude Desktop opens and prompts you to **Install**
-3. **Configure:** In Claude Desktop → **Settings → Extensions → Google Workspace MCP**, paste your Google OAuth credentials
-4. **Use it:** Start a new Claude chat and call any Google Workspace tool
+> `.dxt` bundles server, deps & manifest — download → double-click → done. No terminal, no JSON editing.
 
->
-**Why DXT?**
-> Desktop Extensions (`.dxt`) bundle the server, dependencies, and manifest so users go from download → working MCP in **one click** – no terminal, no JSON editing, no version conflicts.
+1. **Download** the latest `google_workspace_mcp.dxt` from [Releases](https://github.com/taylorwilsdon/google_workspace_mcp/releases)
+2. **Install** — double-click the file, Claude Desktop prompts to install
+3. **Configure** — Settings → Extensions → Google Workspace MCP, paste your OAuth credentials
+4. **Use it** — start a new Claude chat and call any Google Workspace tool
 
 <div align="center">
   <video width="832" src="https://github.com/user-attachments/assets/83cca4b3-5e94-448b-acb3-6e3a27341d3a"></video>
