@@ -610,32 +610,25 @@ cp .env.oauth21 .env
 
 > **Note**: All tools support automatic authentication via `@require_google_service()` decorators with 30-minute service caching.
 
-<table width="100%">
-<tr>
-<td width="50%" valign="top">
-
-### 📅 **Google Calendar** <sub>[`calendar_tools.py`](gcalendar/calendar_tools.py)</sub>
+#### 📅 Google Calendar <sub>[`calendar_tools.py`](gcalendar/calendar_tools.py)</sub>
 
 | Tool | Tier | Description |
 |------|------|-------------|
-| `list_calendars` | **Core** | List accessible calendars |
-| `get_events` | **Core** | Retrieve events with time range filtering |
-| `manage_event` | **Core** | Create, update, or delete calendar events |
+| `list_calendars` | Core | List accessible calendars |
+| `get_events` | Core | Retrieve events with time range filtering |
+| `manage_event` | Core | Create, update, or delete calendar events |
 
-</td>
-<td width="50%" valign="top">
-
-### 📁 **Google Drive** <sub>[`drive_tools.py`](gdrive/drive_tools.py)</sub>
+#### 📁 Google Drive <sub>[`drive_tools.py`](gdrive/drive_tools.py)</sub>
 
 | Tool | Tier | Description |
 |------|------|-------------|
-| `search_drive_files` | **Core** | Search files with query syntax |
-| `get_drive_file_content` | **Core** | Read file content (Office formats) |
-| `get_drive_file_download_url` | **Core** | Download Drive files to local disk |
-| `create_drive_file` | **Core** | Create files or fetch from URLs |
-| `create_drive_folder` | **Core** | Create empty folders in Drive or shared drives |
-| `import_to_google_doc` | **Core** | Import files (MD, DOCX, HTML, etc.) as Google Docs |
-| `get_drive_shareable_link` | **Core** | Get shareable links for a file |
+| `search_drive_files` | Core | Search files with query syntax |
+| `get_drive_file_content` | Core | Read file content (Office formats) |
+| `get_drive_file_download_url` | Core | Download Drive files to local disk |
+| `create_drive_file` | Core | Create files or fetch from URLs |
+| `create_drive_folder` | Core | Create empty folders in Drive or shared drives |
+| `import_to_google_doc` | Core | Import files (MD, DOCX, HTML, etc.) as Google Docs |
+| `get_drive_shareable_link` | Core | Get shareable links for a file |
 | `list_drive_items` | Extended | List folder contents |
 | `copy_drive_file` | Extended | Copy existing files (templates) with optional renaming |
 | `update_drive_file` | Extended | Update file metadata, move between folders |
@@ -644,21 +637,14 @@ cp .env.oauth21 .env
 | `get_drive_file_permissions` | Complete | Get detailed file permissions |
 | `check_drive_file_public_access` | Complete | Check public sharing status |
 
-</td>
-</tr>
-<tr>
-
-<tr>
-<td width="50%" valign="top">
-
-### 📧 **Gmail** <sub>[`gmail_tools.py`](gmail/gmail_tools.py)</sub>
+#### 📧 Gmail <sub>[`gmail_tools.py`](gmail/gmail_tools.py)</sub>
 
 | Tool | Tier | Description |
 |------|------|-------------|
-| `search_gmail_messages` | **Core** | Search with Gmail operators |
-| `get_gmail_message_content` | **Core** | Retrieve message content |
-| `get_gmail_messages_content_batch` | **Core** | Batch retrieve message content |
-| `send_gmail_message` | **Core** | Send emails |
+| `search_gmail_messages` | Core | Search with Gmail operators |
+| `get_gmail_message_content` | Core | Retrieve message content |
+| `get_gmail_messages_content_batch` | Core | Batch retrieve message content |
+| `send_gmail_message` | Core | Send emails |
 | `get_gmail_thread_content` | Extended | Get full thread content |
 | `modify_gmail_message_labels` | Extended | Modify message labels |
 | `list_gmail_labels` | Extended | List available labels |
@@ -712,16 +698,13 @@ Saved files expire after 1 hour and are cleaned up automatically.
 
 </details>
 
-</td>
-<td width="50%" valign="top">
-
-### 📝 **Google Docs** <sub>[`docs_tools.py`](gdocs/docs_tools.py)</sub>
+#### 📝 Google Docs <sub>[`docs_tools.py`](gdocs/docs_tools.py)</sub>
 
 | Tool | Tier | Description |
 |------|------|-------------|
-| `get_doc_content` | **Core** | Extract document text |
-| `create_doc` | **Core** | Create new documents |
-| `modify_doc_text` | **Core** | Modify document text (formatting + links) |
+| `get_doc_content` | Core | Extract document text |
+| `create_doc` | Core | Create new documents |
+| `modify_doc_text` | Core | Modify document text (formatting + links) |
 | `search_docs` | Extended | Find documents by name |
 | `find_and_replace_doc` | Extended | Find and replace text |
 | `list_docs_in_folder` | Extended | List docs in folder |
@@ -738,19 +721,13 @@ Saved files expire after 1 hour and are cleaned up automatically.
 | `list_document_comments` | Complete | List all document comments |
 | `manage_document_comment` | Complete | Create, reply to, or resolve comments |
 
-</td>
-</tr>
-
-<tr>
-<td width="50%" valign="top">
-
-### 📊 **Google Sheets** <sub>[`sheets_tools.py`](gsheets/sheets_tools.py)</sub>
+#### 📊 Google Sheets <sub>[`sheets_tools.py`](gsheets/sheets_tools.py)</sub>
 
 | Tool | Tier | Description |
 |------|------|-------------|
-| `read_sheet_values` | **Core** | Read cell ranges |
-| `modify_sheet_values` | **Core** | Write/update/clear cells |
-| `create_spreadsheet` | **Core** | Create new spreadsheets |
+| `read_sheet_values` | Core | Read cell ranges |
+| `modify_sheet_values` | Core | Write/update/clear cells |
+| `create_spreadsheet` | Core | Create new spreadsheets |
 | `list_spreadsheets` | Extended | List accessible spreadsheets |
 | `get_spreadsheet_info` | Extended | Get spreadsheet metadata |
 | `format_sheet_range` | Extended | Apply colors, number formats, text wrapping, alignment, bold/italic, font size |
@@ -759,123 +736,92 @@ Saved files expire after 1 hour and are cleaned up automatically.
 | `manage_spreadsheet_comment` | Complete | Create, reply to, or resolve comments |
 | `manage_conditional_formatting` | Complete | Add, update, or delete conditional formatting rules |
 
-</td>
-<td width="50%" valign="top">
-
-### 🖼️ **Google Slides** <sub>[`slides_tools.py`](gslides/slides_tools.py)</sub>
+#### 🖼️ Google Slides <sub>[`slides_tools.py`](gslides/slides_tools.py)</sub>
 
 | Tool | Tier | Description |
 |------|------|-------------|
-| `create_presentation` | **Core** | Create new presentations |
-| `get_presentation` | **Core** | Retrieve presentation details |
+| `create_presentation` | Core | Create new presentations |
+| `get_presentation` | Core | Retrieve presentation details |
 | `batch_update_presentation` | Extended | Apply multiple updates |
 | `get_page` | Extended | Get specific slide information |
 | `get_page_thumbnail` | Extended | Generate slide thumbnails |
 | `list_presentation_comments` | Complete | List all presentation comments |
 | `manage_presentation_comment` | Complete | Create, reply to, or resolve comments |
 
-</td>
-</tr>
-<tr>
-<td width="50%" valign="top">
-
-### 📝 **Google Forms** <sub>[`forms_tools.py`](gforms/forms_tools.py)</sub>
+#### 📋 Google Forms <sub>[`forms_tools.py`](gforms/forms_tools.py)</sub>
 
 | Tool | Tier | Description |
 |------|------|-------------|
-| `create_form` | **Core** | Create new forms |
-| `get_form` | **Core** | Retrieve form details & URLs |
+| `create_form` | Core | Create new forms |
+| `get_form` | Core | Retrieve form details & URLs |
 | `set_publish_settings` | Complete | Configure form settings |
 | `get_form_response` | Complete | Get individual responses |
 | `list_form_responses` | Extended | List all responses with pagination |
 | `batch_update_form` | Complete | Apply batch updates (questions, settings) |
 
-</td>
-<td width="50%" valign="top">
-
-### ✓ **Google Tasks** <sub>[`tasks_tools.py`](gtasks/tasks_tools.py)</sub>
+#### ✓ Google Tasks <sub>[`tasks_tools.py`](gtasks/tasks_tools.py)</sub>
 
 | Tool | Tier | Description |
 |------|------|-------------|
-| `list_tasks` | **Core** | List tasks with filtering |
-| `get_task` | **Core** | Retrieve task details |
-| `manage_task` | **Core** | Create, update, delete, or move tasks |
+| `list_tasks` | Core | List tasks with filtering |
+| `get_task` | Core | Retrieve task details |
+| `manage_task` | Core | Create, update, delete, or move tasks |
 | `list_task_lists` | Complete | List task lists |
 | `get_task_list` | Complete | Get task list details |
 | `manage_task_list` | Complete | Create, update, delete task lists, or clear completed tasks |
 
-</td>
-</tr>
-<tr>
-<td width="50%" valign="top">
-
-### 👤 **Google Contacts** <sub>[`contacts_tools.py`](gcontacts/contacts_tools.py)</sub>
+#### 👤 Google Contacts <sub>[`contacts_tools.py`](gcontacts/contacts_tools.py)</sub>
 
 | Tool | Tier | Description |
 |------|------|-------------|
-| `search_contacts` | **Core** | Search contacts by name, email, phone |
-| `get_contact` | **Core** | Retrieve detailed contact info |
-| `list_contacts` | **Core** | List contacts with pagination |
-| `manage_contact` | **Core** | Create, update, or delete contacts |
+| `search_contacts` | Core | Search contacts by name, email, phone |
+| `get_contact` | Core | Retrieve detailed contact info |
+| `list_contacts` | Core | List contacts with pagination |
+| `manage_contact` | Core | Create, update, or delete contacts |
 | `list_contact_groups` | Extended | List contact groups/labels |
 | `get_contact_group` | Extended | Get group details with members |
 | `manage_contacts_batch` | Complete | Batch create, update, or delete contacts |
 | `manage_contact_group` | Complete | Create, update, delete groups, or modify membership |
 
-</td>
-</tr>
-<tr>
-<td width="50%" valign="top">
-
-### 💬 **Google Chat** <sub>[`chat_tools.py`](gchat/chat_tools.py)</sub>
+#### 💬 Google Chat <sub>[`chat_tools.py`](gchat/chat_tools.py)</sub>
 
 | Tool | Tier | Description |
 |------|------|-------------|
 | `list_spaces` | Extended | List chat spaces/rooms |
-| `get_messages` | **Core** | Retrieve space messages |
-| `send_message` | **Core** | Send messages to spaces |
-| `search_messages` | **Core** | Search across chat history |
-| `create_reaction` | **Core** | Add emoji reaction to a message |
+| `get_messages` | Core | Retrieve space messages |
+| `send_message` | Core | Send messages to spaces |
+| `search_messages` | Core | Search across chat history |
+| `create_reaction` | Core | Add emoji reaction to a message |
 | `download_chat_attachment` | Extended | Download attachment from a chat message |
 
-</td>
-<td width="50%" valign="top">
-
-### 🔍 **Google Custom Search** <sub>[`search_tools.py`](gsearch/search_tools.py)</sub>
+#### 🔍 Google Custom Search <sub>[`search_tools.py`](gsearch/search_tools.py)</sub>
 
 | Tool | Tier | Description |
 |------|------|-------------|
-| `search_custom` | **Core** | Perform web searches (supports site restrictions via sites parameter) |
+| `search_custom` | Core | Perform web searches (supports site restrictions via sites parameter) |
 | `get_search_engine_info` | Complete | Retrieve search engine metadata |
 
-</td>
-</tr>
-<tr>
-<td colspan="2" valign="top">
-
-### **Google Apps Script** <sub>[`apps_script_tools.py`](gappsscript/apps_script_tools.py)</sub>
+#### ⚡ Google Apps Script <sub>[`apps_script_tools.py`](gappsscript/apps_script_tools.py)</sub>
 
 | Tool | Tier | Description |
 |------|------|-------------|
-| `list_script_projects` | **Core** | List accessible Apps Script projects |
-| `get_script_project` | **Core** | Get complete project with all files |
-| `get_script_content` | **Core** | Retrieve specific file content |
-| `create_script_project` | **Core** | Create new standalone or bound project |
-| `update_script_content` | **Core** | Update or create script files |
-| `run_script_function` | **Core** | Execute function with parameters |
+| `list_script_projects` | Core | List accessible Apps Script projects |
+| `get_script_project` | Core | Get complete project with all files |
+| `get_script_content` | Core | Retrieve specific file content |
+| `create_script_project` | Core | Create new standalone or bound project |
+| `update_script_content` | Core | Update or create script files |
+| `run_script_function` | Core | Execute function with parameters |
 | `list_deployments` | Extended | List all project deployments |
 | `manage_deployment` | Extended | Create, update, or delete script deployments |
 | `list_script_processes` | Extended | View recent executions and status |
 
-</td>
-</tr>
-</table>
+<sub>
 
+**Tool Tier Legend:** <span style="color:#2d5b69">●</span> **Core** — Essential tools for basic functionality · Minimal API usage · Getting started &ensp;
+<span style="color:#72898f">●</span> **Extended** — Core + additional features · Regular usage · Expanded capabilities &ensp;
+<span style="color:#adbcbc">●</span> **Complete** — All available tools including advanced features · Power users · Full API access
 
-**Tool Tier Legend:**
-- <span style="color:#2d5b69">•</span> **Core**: Essential tools for basic functionality • Minimal API usage • Getting started
-- <span style="color:#72898f">•</span> **Extended**: Core tools + additional features • Regular usage • Expanded capabilities
-- <span style="color:#adbcbc">•</span> **Complete**: All available tools including advanced features • Power users • Full API access
+</sub>
 
 ---
 
