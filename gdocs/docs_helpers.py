@@ -559,8 +559,7 @@ def create_update_table_cell_style_request(
     }
 
     uses_table_range = any(
-        value is not None
-        for value in (row_index, column_index, row_span, column_span)
+        value is not None for value in (row_index, column_index, row_span, column_span)
     )
     if uses_table_range:
         if row_index is None or column_index is None:
