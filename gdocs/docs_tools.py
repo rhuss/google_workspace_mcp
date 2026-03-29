@@ -7,6 +7,7 @@ This module provides MCP tools for interacting with Google Docs API and managing
 import logging
 import asyncio
 import io
+import inspect
 import re
 from typing import List, Dict, Any, Optional
 
@@ -60,6 +61,7 @@ from gdocs.managers import (
 import json
 
 logger = logging.getLogger(__name__)
+HEADER_FOOTER_RUNTIME_CANARY = "docs-hf-canary-20260328b"
 
 
 @server.tool()
@@ -967,9 +969,11 @@ async def update_doc_headers_footers(
 
     if success:
         link = f"https://docs.google.com/document/d/{document_id}/edit"
-        return f"{message}. Link: {link}"
+        return (
+            f"{message}. Runtime: {HEADER_FOOTER_RUNTIME_CANARY}. Link: {link}"
+        )
     else:
-        return f"Error: {message}"
+        return f"Error: {message}. Runtime: {HEADER_FOOTER_RUNTIME_CANARY}"
 
 
 @server.tool()
@@ -1290,19 +1294,41 @@ async def inspect_doc_structure(
     if tab_id:
         tab = find_tab(doc.get("tabs", []), tab_id)
         if tab and "documentTab" in tab:
-            target_content = tab["documentTab"].get("body", {})
-            analysis_named_ranges = tab["documentTab"].get("namedRanges", {})
+            document_tab = tab["documentTab"]
+            target_content = document_tab.get("body", {})
+            analysis_named_ranges = document_tab.get("namedRanges", {})
         elif tab:
             return f"Error: Tab {tab_id} is not a document tab and has no body content."
         else:
             return f"Error: Tab {tab_id} not found in document."
     else:
         analysis_named_ranges = doc.get("namedRanges", {})
+        document_tab = None
 
     # Create a dummy doc object for analysis tools that expect a full doc
     analysis_doc = doc.copy()
     analysis_doc["body"] = target_content
     analysis_doc["namedRanges"] = analysis_named_ranges
+    if tab_id and document_tab:
+        analysis_doc["headers"] = document_tab.get("headers", {})
+        analysis_doc["footers"] = document_tab.get("footers", {})
+        analysis_doc["documentStyle"] = document_tab.get("documentStyle", {})
+    elif not tab_id and doc.get("tabs"):
+        # Default to the first document tab for tab-aware header/footer inspection.
+        def first_document_tab(tabs):
+            for candidate in tabs:
+                if "documentTab" in candidate:
+                    return candidate["documentTab"]
+                child = first_document_tab(candidate.get("childTabs", []))
+                if child:
+                    return child
+            return None
+
+        first_tab_doc = first_document_tab(doc.get("tabs", []))
+        if first_tab_doc:
+            analysis_doc["headers"] = first_tab_doc.get("headers", {})
+            analysis_doc["footers"] = first_tab_doc.get("footers", {})
+            analysis_doc["documentStyle"] = first_tab_doc.get("documentStyle", {})
 
     structure = parse_document_structure(analysis_doc)
 
@@ -1520,6 +1546,33 @@ def _build_segment_inspection_entries(
             break
 
     return list(entries.values())
+
+
+@server.tool()
+@handle_http_errors("debug_docs_runtime_info", is_read_only=True, service_type="docs")
+@require_google_service("docs", "docs_read")
+async def debug_docs_runtime_info(
+    service: Any,
+    user_google_email: str,
+) -> str:
+    """
+    Return runtime/source information for diagnosing stale MCP server instances.
+
+    This is a temporary diagnostic tool intended to verify which code checkout
+    the running MCP server has loaded.
+    """
+    import gdocs.managers.header_footer_manager as header_footer_manager_module
+
+    return json.dumps(
+        {
+            "runtime_canary": HEADER_FOOTER_RUNTIME_CANARY,
+            "docs_tools_file": inspect.getsourcefile(inspect.getmodule(debug_docs_runtime_info)),
+            "header_footer_manager_file": inspect.getsourcefile(
+                header_footer_manager_module
+            ),
+        },
+        indent=2,
+    )
 
 
 @server.tool()

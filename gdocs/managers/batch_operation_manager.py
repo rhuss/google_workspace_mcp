@@ -84,6 +84,12 @@ class BatchOperationManager:
             )
 
         try:
+            preflight_error = await self._preflight_create_header_footer_operations(
+                document_id, operations
+            )
+            if preflight_error:
+                return False, preflight_error, {}
+
             # Validate and build requests
             requests, operation_descriptions = await self._validate_and_build_requests(
                 operations
@@ -136,6 +142,78 @@ class BatchOperationManager:
             error_msg = self._rewrite_execution_error(str(e), operations)
             logger.error(f"Failed to execute batch operations: {error_msg}")
             return False, error_msg, {}
+
+    async def _preflight_create_header_footer_operations(
+        self, document_id: str, operations: list[dict[str, Any]]
+    ) -> str | None:
+        """
+        Validate create_header_footer operations against the live document before
+        sending low-level Docs API requests that often fail opaquely.
+        """
+        create_ops = [
+            op for op in operations if op.get("type") == "create_header_footer"
+        ]
+        if not create_ops:
+            return None
+
+        doc = await asyncio.to_thread(
+            self.service.documents().get(documentId=document_id).execute
+        )
+
+        style_field_map = {
+            "header": {
+                "DEFAULT": "defaultHeaderId",
+                "FIRST_PAGE_ONLY": "firstPageHeaderId",
+                "EVEN_PAGE": "evenPageHeaderId",
+            },
+            "footer": {
+                "DEFAULT": "defaultFooterId",
+                "FIRST_PAGE_ONLY": "firstPageFooterId",
+                "EVEN_PAGE": "evenPageFooterId",
+            },
+        }
+
+        section_breaks: dict[int, dict[str, Any]] = {}
+        for element in doc.get("body", {}).get("content", []):
+            if "sectionBreak" in element:
+                section_breaks[element.get("startIndex", 0)] = element["sectionBreak"]
+
+        for op in create_ops:
+            section_type = op["section_type"]
+            header_footer_type = op.get("header_footer_type", "DEFAULT")
+            style_field = style_field_map[section_type][header_footer_type]
+            section_break_index = op.get("section_break_index")
+
+            if section_break_index is None:
+                if doc.get("documentStyle", {}).get(style_field):
+                    return (
+                        "Batch operation failed: the requested header/footer already exists. "
+                        "For normal header or footer text, use update_doc_headers_footers "
+                        "instead of batch_update_doc with create_header_footer. "
+                        "Reserve create_header_footer for advanced section-break layouts."
+                    )
+                continue
+
+            if section_break_index not in section_breaks:
+                available = sorted(section_breaks.keys())
+                return (
+                    "Batch operation failed: section_break_index must match an existing "
+                    "section break start index from inspect_doc_structure.section_breaks[]. "
+                    f"Got {section_break_index}. Available section break indices: {available or 'none'}. "
+                    "For normal header/footer text, use update_doc_headers_footers instead."
+                )
+
+            if section_breaks[section_break_index].get("sectionStyle", {}).get(
+                style_field
+            ):
+                return (
+                    "Batch operation failed: the requested section-scoped header/footer "
+                    "already exists at that section break. Use inspect_doc_structure to "
+                    "find real section breaks, or use update_doc_headers_footers for "
+                    "ordinary header/footer text."
+                )
+
+        return None
 
     async def _validate_and_build_requests(
         self, operations: list[dict[str, Any]]

@@ -86,10 +86,11 @@ class HeaderFooterManager:
         try:
             # Get document structure
             doc = await self._get_document(document_id)
+            target_doc, active_tab_id = self._get_target_doc_for_header_footer(doc)
 
             # Find the target section
             target_section, section_id = await self._find_target_section(
-                doc, section_type, header_footer_type
+                target_doc, section_type, header_footer_type
             )
 
             if not section_id:
@@ -102,25 +103,42 @@ class HeaderFooterManager:
                         f"No {section_type} found in document and automatic creation failed",
                     )
                 doc = await self._get_document(document_id)
+                target_doc, active_tab_id = self._get_target_doc_for_header_footer(doc)
                 target_section = (
-                    doc.get("headers", {}).get(created_id)
+                    target_doc.get("headers", {}).get(created_id)
                     if section_type == "header"
-                    else doc.get("footers", {}).get(created_id)
+                    else target_doc.get("footers", {}).get(created_id)
                 )
                 section_id = created_id
 
             # Update the content
-            success = await self._replace_section_content(
-                document_id, target_section, content, section_id
+            success, replace_message = await self._replace_section_content(
+                document_id, target_section, content, section_id, active_tab_id
             )
+
+            if not success:
+                # Retry once after re-fetching the document. Newly created headers/footers
+                # can lag briefly before their segment content becomes fully visible.
+                refreshed_doc = await self._get_document(document_id)
+                refreshed_target_doc, refreshed_tab_id = (
+                    self._get_target_doc_for_header_footer(refreshed_doc)
+                )
+                refreshed_section, refreshed_section_id = await self._find_target_section(
+                    refreshed_target_doc, section_type, header_footer_type
+                )
+                if refreshed_section_id:
+                    success, replace_message = await self._replace_section_content(
+                        document_id,
+                        refreshed_section,
+                        content,
+                        refreshed_section_id,
+                        refreshed_tab_id,
+                    )
 
             if success:
                 return True, f"Updated {section_type} content in document {document_id}"
             else:
-                return (
-                    False,
-                    f"Could not find content structure in {section_type} to update",
-                )
+                return False, replace_message
 
         except Exception as e:
             logger.error(f"Failed to update {section_type}: {str(e)}")
@@ -129,8 +147,45 @@ class HeaderFooterManager:
     async def _get_document(self, document_id: str) -> dict[str, Any]:
         """Get the full document data."""
         return await asyncio.to_thread(
-            self.service.documents().get(documentId=document_id).execute
+            self.service.documents()
+            .get(documentId=document_id, includeTabsContent=True)
+            .execute
         )
+
+    def _get_target_doc_for_header_footer(
+        self, doc: dict[str, Any]
+    ) -> tuple[dict[str, Any], Optional[str]]:
+        """
+        Return the document-like content container for header/footer operations.
+
+        In tabbed docs, text content lives under tab.documentTab rather than the
+        legacy top-level body/headers/footers/documentStyle fields.
+        """
+        tabs = doc.get("tabs", [])
+        if not tabs:
+            return doc, None
+
+        flattened_tabs: list[dict[str, Any]] = []
+
+        def add_tab_and_children(tab: dict[str, Any]) -> None:
+            flattened_tabs.append(tab)
+            for child in tab.get("childTabs", []):
+                add_tab_and_children(child)
+
+        for tab in tabs:
+            add_tab_and_children(tab)
+
+        for tab in flattened_tabs:
+            document_tab = tab.get("documentTab")
+            if not document_tab:
+                continue
+            tab_id = tab.get("tabProperties", {}).get("tabId")
+            tab_doc = dict(document_tab)
+            if "title" not in tab_doc:
+                tab_doc["title"] = doc.get("title", "")
+            return tab_doc, tab_id
+
+        return doc, None
 
     async def _find_target_section(
         self, doc: dict[str, Any], section_type: str, header_footer_type: str
@@ -213,7 +268,8 @@ class HeaderFooterManager:
         section: dict[str, Any],
         new_content: str,
         section_id: str,
-    ) -> bool:
+        tab_id: Optional[str],
+    ) -> tuple[bool, str]:
         """
         Replace the content in a header or footer section.
 
@@ -223,7 +279,7 @@ class HeaderFooterManager:
             new_content: New content to insert
 
         Returns:
-            True if successful, False otherwise
+            Tuple of (success, message)
         """
         content_elements = section.get("content", []) if section else []
         first_para = self._find_first_paragraph(content_elements)
@@ -238,11 +294,14 @@ class HeaderFooterManager:
         requests = []
 
         # Delete existing content if any (preserve paragraph structure)
-        if end_index > start_index:
+        # Docs segments often contain a single empty paragraph marker. Deleting
+        # start..end-1 in that case produces an empty range, which the API rejects.
+        if end_index - start_index > 1:
             requests.append(
                 create_delete_range_request(
                     start_index,
                     end_index - 1,  # Preserve the trailing paragraph marker
+                    tab_id=tab_id,
                     segment_id=section_id,
                 )
             )
@@ -253,6 +312,7 @@ class HeaderFooterManager:
                 create_insert_text_request(
                     start_index,
                     new_content,
+                    tab_id=tab_id,
                     segment_id=section_id,
                 )
             )
@@ -263,6 +323,7 @@ class HeaderFooterManager:
                 create_insert_text_request(
                     None,
                     new_content,
+                    tab_id=tab_id,
                     segment_id=section_id,
                     end_of_segment=True,
                 )
@@ -274,11 +335,14 @@ class HeaderFooterManager:
                 .batchUpdate(documentId=document_id, body={"requests": requests})
                 .execute
             )
-            return True
+            return True, "ok"
 
         except Exception as e:
             logger.error(f"Failed to replace section content: {str(e)}")
-            return False
+            return (
+                False,
+                f"Failed to write {section_id} segment content: {str(e)}",
+            )
 
     async def _create_missing_section(
         self, document_id: str, section_type: str, header_footer_type: str = "DEFAULT"
