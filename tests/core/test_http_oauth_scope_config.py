@@ -24,6 +24,10 @@ def test_configure_server_for_http_uses_base_required_scopes(monkeypatch):
     )
     monkeypatch.setattr(server_module, "set_auth_provider", lambda provider: None)
 
+    # Capture and restore globals that configure_server_for_http() mutates directly
+    monkeypatch.setattr(server_module, "_auth_provider", server_module._auth_provider)
+    monkeypatch.setattr(server_module.server, "auth", server_module.server.auth)
+
     monkeypatch.setattr(
         "auth.oauth_config.get_oauth_config",
         lambda: SimpleNamespace(
