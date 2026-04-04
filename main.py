@@ -177,7 +177,7 @@ def main():
     parser.add_argument(
         "--transport",
         choices=["stdio", "streamable-http"],
-        default="stdio",
+        default=None,
         help="Transport mode: stdio (default) or streamable-http",
     )
     parser.add_argument(
@@ -219,12 +219,12 @@ def main():
         if _env_ro in {"true", "1", "yes"}:
             args.read_only = True
     if args.permissions is None:
-        _env_perms = os.getenv("WORKSPACE_MCP_PERMISSIONS")
+        _env_perms = os.getenv("WORKSPACE_MCP_PERMISSIONS", "").strip()
         if _env_perms:
             args.permissions = _env_perms.split()
-    _env_transport = os.getenv("WORKSPACE_MCP_TRANSPORT", "").strip().lower()
-    if _env_transport in {"stdio", "streamable-http"} and args.transport == "stdio":
-        args.transport = _env_transport
+    if args.transport is None:
+        _env_transport = os.getenv("WORKSPACE_MCP_TRANSPORT", "").strip().lower()
+        args.transport = _env_transport if _env_transport in {"stdio", "streamable-http"} else "stdio"
 
     # Validate mutually exclusive flags
     if args.permissions and args.read_only:
@@ -315,7 +315,8 @@ def main():
         safe_print(f"   - {key}: {value}")
     safe_print("")
 
-    # Import tool modules to register them with the MCP server via decorators
+    # Import tool modules to register them with the MCP server via decorators.
+    # NOTE: Lambda order must match SERVICE_NAMES order exactly.
     tool_imports = dict(zip(SERVICE_NAMES, [
         lambda: import_module("gmail.gmail_tools"),
         lambda: import_module("gdrive.drive_tools"),
