@@ -177,6 +177,9 @@ uv run main.py --tools gmail drive calendar
 | `OAUTH_ALLOWED_ORIGINS` | | Comma-separated additional CORS origins |
 | `WORKSPACE_MCP_OAUTH_PROXY_STORAGE_BACKEND` | | `memory`, `disk`, or `valkey` — see [storage backends](#oauth-proxy-storage-backends) |
 | `FASTMCP_SERVER_AUTH_GOOGLE_JWT_SIGNING_KEY` | | Custom encryption key for OAuth proxy storage |
+| **🔧 Service Account** | | |
+| `GOOGLE_SERVICE_ACCOUNT_KEY_FILE` | | Path to service account JSON key file (domain-wide delegation) |
+| `GOOGLE_SERVICE_ACCOUNT_KEY_JSON` | | Inline service account JSON key (alternative to file) |
 | **🔍 Custom Search** | | |
 | `GOOGLE_PSE_API_KEY` | | API key for Programmable Search Engine |
 | `GOOGLE_PSE_ENGINE_ID` | | Search Engine ID for PSE |
@@ -955,13 +958,14 @@ The server includes OAuth 2.1 support for bearer token authentication, enabling 
 - Production environments requiring secure session management
 - Browser-based clients requiring CORS support
 
-**⚠️ Important: OAuth 2.1 and Single-User Mode are mutually exclusive**
+**⚠️ Important: Mutually exclusive authentication modes**
 
-OAuth 2.1 mode (`MCP_ENABLE_OAUTH21=true`) cannot be used together with the `--single-user` flag:
+OAuth 2.1 mode (`MCP_ENABLE_OAUTH21=true`) cannot be used together with `--single-user` or service account mode:
 - **Single-user mode**: For legacy clients that pass user emails in tool calls
 - **OAuth 2.1 mode**: For modern multi-user scenarios with bearer token authentication
+- **Service account mode**: For headless/server-to-server use via domain-wide delegation
 
-Choose one authentication method - using both will result in a startup error.
+Choose one authentication method - combining incompatible modes will result in a startup error.
 
 **Enabling OAuth 2.1:**
 To enable OAuth 2.1, set the `MCP_ENABLE_OAUTH21` environment variable to `true`.
@@ -1110,6 +1114,49 @@ uv run main.py --transport streamable-http
 - Multi-tenant SaaS applications with centralized auth
 - Mobile or web apps with their own OAuth implementation
 
+
+### Service Account Mode (Domain-Wide Delegation)
+
+> **WARNING: This mode uses Google Workspace domain-wide delegation, which grants the service account the ability to impersonate any user in your domain for the configured scopes. This is powerful and dangerous — do not use this unless you fully understand the security implications. A misconfigured service account with broad scopes can read, modify, and delete data across every user in your organization. Only use this in tightly controlled environments where you know exactly what you're doing.**
+
+Service account mode allows the server to authenticate using a Google Cloud service account with domain-wide delegation instead of interactive OAuth flows. The service account impersonates a single configured domain user for all API calls.
+
+**When to use service account mode:**
+- Headless or unattended environments where no browser is available for OAuth consent
+- Server-to-server integrations that need to act on behalf of a specific domain user
+- CI/CD pipelines or automation scripts
+- Environments where you cannot or do not want to manage per-user OAuth tokens
+
+**Enabling Service Account Mode:**
+
+```bash
+# Option 1: Key file on disk
+export GOOGLE_SERVICE_ACCOUNT_KEY_FILE="/path/to/service-account-key.json"
+export USER_GOOGLE_EMAIL="user@yourdomain.com"
+uv run main.py
+
+# Option 2: Inline JSON key (e.g., from a secret manager)
+export GOOGLE_SERVICE_ACCOUNT_KEY_JSON='{"type":"service_account","project_id":"...","private_key":"...","client_email":"..."}'
+export USER_GOOGLE_EMAIL="user@yourdomain.com"
+uv run main.py
+```
+
+**Prerequisites:**
+1. A Google Cloud service account with a JSON key
+2. Domain-wide delegation enabled for the service account in your Google Workspace Admin Console (Security → API controls → Domain-wide delegation)
+3. The required OAuth scopes authorized for the service account's client ID in the Admin Console
+4. `USER_GOOGLE_EMAIL` set to the domain user the service account will impersonate
+
+**Incompatibilities:**
+- Cannot be combined with `--single-user` mode
+- Cannot be combined with `MCP_ENABLE_OAUTH21=true`
+- Only one key source may be provided — set either `GOOGLE_SERVICE_ACCOUNT_KEY_FILE` or `GOOGLE_SERVICE_ACCOUNT_KEY_JSON`, not both
+
+**Key Behaviors:**
+- The OAuth callback server is not started (no interactive auth needed)
+- Credentials directory permission checks are skipped
+- Caller-supplied email addresses in tool calls are ignored — the server always uses the configured `USER_GOOGLE_EMAIL`
+- The service account key is validated at startup (checks for required fields and correct type)
 
 ### VS Code MCP Client Support
 
