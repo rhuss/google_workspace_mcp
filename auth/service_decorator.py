@@ -1,6 +1,7 @@
 import inspect
 import json
 import logging
+import os
 
 import re
 from functools import wraps
@@ -64,6 +65,11 @@ from auth.scopes import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _get_configured_user_google_email() -> Optional[str]:
+    """Return the configured default user email, preferring the live environment."""
+    return os.getenv("USER_GOOGLE_EMAIL") or _ENV_USER_EMAIL
 
 
 # Authentication helper functions
@@ -241,7 +247,7 @@ async def _authenticate_service(
         Tuple of (service, actual_user_email)
     """
     if is_service_account_enabled():
-        canonical_email = _ENV_USER_EMAIL
+        canonical_email = _get_configured_user_google_email()
         if not canonical_email:
             raise GoogleAuthenticationError(
                 "Service account mode requires USER_GOOGLE_EMAIL to be configured."
@@ -429,7 +435,7 @@ def _extract_oauth20_user_email(
     if not user_google_email:
         # Fall back to USER_GOOGLE_EMAIL env var for single-user / self-hosted mode.
         # This allows callers (agents) to omit the parameter when a default is configured.
-        user_google_email = _ENV_USER_EMAIL
+        user_google_email = _get_configured_user_google_email()
     if not user_google_email:
         raise Exception("'user_google_email' parameter is required but was not found.")
     # Ensure the resolved email is visible to the original function via kwargs
@@ -710,7 +716,7 @@ def require_google_service(
             try:
                 tool_name = func.__name__
 
-                # Log tool invocation with user identity for admin visibility
+                # Log requested user identity for audit visibility.
                 logger.info(
                     f"[{tool_name}] {user_google_email} -> "
                     f"{service_name}/{service_version}"
@@ -844,7 +850,7 @@ def require_multiple_services(service_configs: List[Dict[str, Any]]):
                     args, kwargs, wrapper_sig
                 )
 
-            # Log tool invocation with user identity for admin visibility
+            # Log requested user identity for audit visibility.
             services_desc = ", ".join(c["service_type"] for c in service_configs)
             logger.info(f"[{tool_name}] {user_google_email} -> [{services_desc}]")
 
