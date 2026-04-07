@@ -122,9 +122,7 @@ def _detect_oauth_version(
     # be available even if middleware state wasn't populated.
     try:
         if get_access_token() is not None:
-            logger.debug(
-                f"[{tool_name}] OAuth 2.1 selected via validated access token"
-            )
+            logger.debug(f"[{tool_name}] OAuth 2.1 selected via validated access token")
             return True
     except Exception as e:
         logger.debug(
@@ -254,9 +252,7 @@ async def _authenticate_service(
                 f"'{user_google_email}', using configured USER_GOOGLE_EMAIL "
                 f"'{canonical_email}'"
             )
-        credentials = _get_service_account_credentials(
-            resolved_scopes, canonical_email
-        )
+        credentials = _get_service_account_credentials(resolved_scopes, canonical_email)
         service = build(service_name, service_version, credentials=credentials)
         logger.info(
             f"[{tool_name}] Authenticated {service_name} for "
@@ -834,8 +830,8 @@ def require_multiple_services(service_configs: List[Dict[str, Any]]):
         async def wrapper(*args, **kwargs):
             # Get authentication context early
             tool_name = func.__name__
-            authenticated_user, auth_method, mcp_session_id = (
-                await _get_auth_context(tool_name)
+            authenticated_user, auth_method, mcp_session_id = await _get_auth_context(
+                tool_name
             )
 
             # Extract user_google_email based on OAuth mode
@@ -850,9 +846,7 @@ def require_multiple_services(service_configs: List[Dict[str, Any]]):
 
             # Log tool invocation with user identity for admin visibility
             services_desc = ", ".join(c["service_type"] for c in service_configs)
-            logger.info(
-                f"[{tool_name}] {user_google_email} -> [{services_desc}]"
-            )
+            logger.info(f"[{tool_name}] {user_google_email} -> [{services_desc}]")
 
             # Authenticate all services
             with ExitStack() as stack:

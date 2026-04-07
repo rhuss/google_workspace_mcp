@@ -16,21 +16,57 @@ _original_stdout = sys.stdout
 if sys.platform == "darwin":
     sys.stdout = io.StringIO()
 
-from auth.oauth_config import (
+def _load_startup_dependencies():
+    from auth.oauth_config import (
+        get_oauth_config,
+        reload_oauth_config,
+        is_stateless_mode,
+        is_service_account_enabled,
+    )
+    from core.log_formatter import EnhancedLogFormatter, configure_file_logging
+    from core.utils import check_credentials_directory_permissions
+    from core.server import server, set_transport_mode, configure_server_for_http
+    from core.tool_tier_loader import resolve_tools_from_tier
+    from core.tool_registry import (
+        set_enabled_tools as set_enabled_tool_names,
+        wrap_server_tool_method,
+        filter_server_tools,
+    )
+
+    return (
+        get_oauth_config,
+        reload_oauth_config,
+        is_stateless_mode,
+        is_service_account_enabled,
+        EnhancedLogFormatter,
+        configure_file_logging,
+        check_credentials_directory_permissions,
+        server,
+        set_transport_mode,
+        configure_server_for_http,
+        resolve_tools_from_tier,
+        set_enabled_tool_names,
+        wrap_server_tool_method,
+        filter_server_tools,
+    )
+
+
+(
     get_oauth_config,
     reload_oauth_config,
     is_stateless_mode,
     is_service_account_enabled,
-)  # noqa: E402
-from core.log_formatter import EnhancedLogFormatter, configure_file_logging  # noqa: E402
-from core.utils import check_credentials_directory_permissions  # noqa: E402
-from core.server import server, set_transport_mode, configure_server_for_http  # noqa: E402
-from core.tool_tier_loader import resolve_tools_from_tier  # noqa: E402
-from core.tool_registry import (  # noqa: E402
-    set_enabled_tools as set_enabled_tool_names,
+    EnhancedLogFormatter,
+    configure_file_logging,
+    check_credentials_directory_permissions,
+    server,
+    set_transport_mode,
+    configure_server_for_http,
+    resolve_tools_from_tier,
+    set_enabled_tool_names,
     wrap_server_tool_method,
     filter_server_tools,
-)
+) = _load_startup_dependencies()
 
 dotenv_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
 load_dotenv(dotenv_path=dotenv_path)
