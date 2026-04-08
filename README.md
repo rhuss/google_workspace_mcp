@@ -121,6 +121,48 @@ Workspace MCP is the single most complete MCP server that integrates all major G
 
 ---
 
+## <span style="color:#adbcbc">Security & Compliance</span>
+
+<table>
+<tr>
+<td valign="top" width="50%">
+
+**For Security Teams**
+
+This server sends no data anywhere except Google's APIs, on behalf of the authenticated user, using your own OAuth client credentials. There is no telemetry, no usage reporting, no analytics, no license server, and no SaaS dependency. The entire data path is: your infrastructure → Google APIs.
+
+- **Fully open source** — every line is auditable in this repo
+- **Your OAuth client, your GCP project** — credentials never leave your environment
+- **You control the scopes** — read-only, granular per-service permissions, or full access
+- **You control the network** — deploy behind your reverse proxy, in your VPC, on your own terms
+- **No third-party services** — no intermediary servers, no token relays, no hosted backends
+- **Stateless mode** — zero disk writes for locked-down container environments
+- **Sensitive path blocking** — `.env`, `.ssh/`, `.aws/`, and credential files are blocked regardless of configuration
+
+Full dependency tree in `pyproject.toml`, pinned in `uv.lock`.
+
+</td>
+<td valign="top" width="50%">
+
+**For Legal & Procurement**
+
+This project is [MIT licensed](LICENSE) — not "open core," not "source available," not "free with a CLA." There is no dual licensing, no commercial tier gating features, and no contributor license agreement.
+
+- **Use commercially without restriction** — build products, sell services, deploy internally
+- **Fork, embed, redistribute** — MIT requires only attribution
+- **No CLA** — contributions remain under MIT
+- **No telemetry to disclose** — nothing to flag in a privacy review
+- **No network effects** — the server never contacts any endpoint you didn't configure
+- **Standard dependency licenses** — MIT, Apache 2.0, and BSD throughout the dependency chain; no copyleft, no AGPL
+
+The license is 21 lines and says what it means.
+
+</td>
+</tr>
+</table>
+
+---
+
 ## Quick Start
 
 > Set credentials → pick a launch command → connect your client
