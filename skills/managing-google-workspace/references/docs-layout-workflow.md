@@ -47,7 +47,7 @@ Claude Code will automatically discover and apply it when creating formatted Goo
 
 If a branded template exists, copy it with `copy_drive_file`. If not, create an empty doc with `create_doc`.
 
-**Important:** The template must be **single-tab**. Multi-tab templates cause `update_paragraph_style` to silently target the wrong tab.
+**Important:** The template must be **single-tab** unless you explicitly pass `tab_id` to each `update_paragraph_style` call. Without `tab_id`, the tool targets the default tab — which may not be the one you're editing in a multi-tab document.
 
 ---
 
@@ -141,7 +141,7 @@ Then download and read the PDF to check:
 | Numbered list shows "1. 1. MAP" | Text already contains "1." prefix AND list_type="ORDERED" adds numbering | Remove number prefixes from text when using ORDERED lists |
 | Euro sign shows as \u20ac | Unicode escape not resolved | Use actual € character in text |
 | Table cells empty | Index calculation wrong after table insert | Fill cells bottom-right to top-left; re-read doc for fresh positions |
-| Wrong tab targeted in multi-tab doc | update_paragraph_style doesn't support tab_id | Use single-tab templates only |
+| Wrong tab styled in multi-tab doc | `tab_id` not passed to `update_paragraph_style` | Pass `tab_id` to each `update_paragraph_style` call, or use single-tab documents |
 | Style cascade across batches | Didn't re-read doc between batches | Always re-read after each insertion |
 
 ---
