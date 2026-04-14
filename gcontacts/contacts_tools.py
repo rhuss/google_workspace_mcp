@@ -6,6 +6,8 @@ This module provides MCP tools for interacting with Google Contacts via the Peop
 
 import asyncio
 import logging
+import re
+import warnings
 from typing import Any, Dict, List, Optional
 
 from googleapiclient.errors import HttpError
@@ -32,6 +34,63 @@ CONTACT_GROUP_FIELDS = "name,groupType,memberCount,metadata"
 # Cache warmup tracking
 _search_cache_warmed_up: Dict[str, bool] = {}
 
+# Known phone types supported by Google People API (custom types also allowed)
+KNOWN_PHONE_TYPES = {
+    "home", "work", "mobile", "homeFax", "workFax", "otherFax",
+    "pager", "workMobile", "workPager", "main", "googleVoice", "other", "internal",
+}
+
+
+def _normalize_phone(value: str) -> str:
+    """Return a normalized phone string for deduplication. Strips non-digit chars except leading +."""
+    stripped = re.sub(r"[^\d+]", "", value)
+    return stripped.lower()
+
+
+def _normalize_email(value: str) -> str:
+    """Return a normalized email string for deduplication."""
+    return value.strip().lower()
+
+
+def _format_phone_line(phone: Dict[str, Any]) -> str:
+    """
+    Format a single phone entry into a display line.
+
+    Returns e.g. '+79270000000 (mobile)' or '250 (Internal)'.
+    """
+    value = phone.get("value", "")
+    phone_type = phone.get("type", "")
+    formatted_type = phone.get("formattedType", "")
+
+    if phone_type == "internal":
+        label = "Internal"
+    elif formatted_type:
+        label = formatted_type
+    elif phone_type:
+        label = phone_type
+    else:
+        label = ""
+
+    if label:
+        return f"{value} ({label})"
+    return value
+
+
+def _format_email_line(email: Dict[str, Any]) -> str:
+    """
+    Format a single email entry into a display line.
+
+    Returns e.g. 'user@example.com (work)'.
+    """
+    value = email.get("value", "")
+    email_type = email.get("type", "")
+    formatted_type = email.get("formattedType", "")
+
+    label = formatted_type or email_type or ""
+    if label:
+        return f"{value} ({label})"
+    return value
+
 
 def _format_contact(person: Dict[str, Any], detailed: bool = False) -> str:
     """
@@ -57,19 +116,29 @@ def _format_contact(person: Dict[str, Any], detailed: bool = False) -> str:
         if display_name:
             lines.append(f"Name: {display_name}")
 
-    # Email addresses
+    # Email addresses — each on its own line with type label
     emails = person.get("emailAddresses", [])
     if emails:
-        email_list = [e.get("value", "") for e in emails if e.get("value")]
-        if email_list:
-            lines.append(f"Email: {', '.join(email_list)}")
+        valid_emails = [e for e in emails if e.get("value")]
+        if valid_emails:
+            if len(valid_emails) == 1:
+                lines.append(f"Email: {_format_email_line(valid_emails[0])}")
+            else:
+                lines.append("Emails:")
+                for e in valid_emails:
+                    lines.append(f"  - {_format_email_line(e)}")
 
-    # Phone numbers
+    # Phone numbers — each on its own line with type label
     phones = person.get("phoneNumbers", [])
     if phones:
-        phone_list = [p.get("value", "") for p in phones if p.get("value")]
-        if phone_list:
-            lines.append(f"Phone: {', '.join(phone_list)}")
+        valid_phones = [p for p in phones if p.get("value")]
+        if valid_phones:
+            if len(valid_phones) == 1:
+                lines.append(f"Phone: {_format_phone_line(valid_phones[0])}")
+            else:
+                lines.append("Phones:")
+                for p in valid_phones:
+                    lines.append(f"  - {_format_phone_line(p)}")
 
     # Organizations
     orgs = person.get("organizations", [])
@@ -134,25 +203,38 @@ def _format_contact(person: Dict[str, Any], detailed: bool = False) -> str:
 def _build_person_body(
     given_name: Optional[str] = None,
     family_name: Optional[str] = None,
+    # New multi-value params
+    phones: Optional[List[Dict[str, Any]]] = None,
+    emails: Optional[List[Dict[str, Any]]] = None,
+    organizations: Optional[List[Dict[str, Any]]] = None,
+    notes: Optional[str] = None,
+    address: Optional[str] = None,
+    # Deprecated single-value aliases
     email: Optional[str] = None,
     phone: Optional[str] = None,
     organization: Optional[str] = None,
     job_title: Optional[str] = None,
-    notes: Optional[str] = None,
-    address: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Build a Person resource body for create/update operations.
 
+    Accepts both new list-based params (phones, emails, organizations) and
+    deprecated single-value aliases (phone, email, organization, job_title).
+
     Args:
         given_name: First name.
         family_name: Last name.
-        email: Email address.
-        phone: Phone number.
-        organization: Company/organization name.
-        job_title: Job title.
+        phones: List of PhoneInput dicts {number, type?, label?}.
+            Supported types: mobile, work, home, main, workMobile, internal, other, etc.
+            Use type="internal" for PBX/ATS short numbers (e.g. 250, 301).
+        emails: List of EmailInput dicts {address, type?, label?}.
+        organizations: List of OrgInput dicts {name?, title?, department?, type?}.
         notes: Additional notes/biography.
         address: Street address.
+        email: [DEPRECATED] Single email address. Use emails instead.
+        phone: [DEPRECATED] Single phone number. Use phones instead.
+        organization: [DEPRECATED] Company/organization name. Use organizations instead.
+        job_title: [DEPRECATED] Job title. Use organizations instead.
 
     Returns:
         Person resource body dictionary.
@@ -167,19 +249,107 @@ def _build_person_body(
             }
         ]
 
-    if email:
-        body["emailAddresses"] = [{"value": email}]
+    # --- Emails ---
+    if email and not emails:
+        warnings.warn(
+            "Parameter 'email' is deprecated. Use 'emails=[{\"address\": ..., \"type\": ...}]' instead.",
+            DeprecationWarning,
+            stacklevel=3,
+        )
+        emails = [{"address": email, "type": "other"}]
+    elif email and emails:
+        warnings.warn(
+            "Both 'email' and 'emails' provided. 'email' alias is ignored.",
+            DeprecationWarning,
+            stacklevel=3,
+        )
 
-    if phone:
-        body["phoneNumbers"] = [{"value": phone}]
+    if emails:
+        email_entries = []
+        for e in emails:
+            entry: Dict[str, Any] = {"value": e.get("address", e.get("value", ""))}
+            if e.get("type"):
+                entry["type"] = e["type"]
+            if e.get("label"):
+                entry["label"] = e["label"]
+            if entry["value"]:
+                email_entries.append(entry)
+        if email_entries:
+            body["emailAddresses"] = email_entries
 
-    if organization or job_title:
+    # --- Phones ---
+    if phone and not phones:
+        warnings.warn(
+            "Parameter 'phone' is deprecated. Use 'phones=[{\"number\": ..., \"type\": ...}]' instead.",
+            DeprecationWarning,
+            stacklevel=3,
+        )
+        phones = [{"number": phone, "type": "mobile"}]
+    elif phone and phones:
+        warnings.warn(
+            "Both 'phone' and 'phones' provided. 'phone' alias is ignored.",
+            DeprecationWarning,
+            stacklevel=3,
+        )
+
+    if phones:
+        phone_entries = []
+        for p in phones:
+            number = p.get("number", p.get("value", ""))
+            if not number:
+                continue
+            entry = {"value": number}
+            if p.get("type"):
+                entry["type"] = p["type"]
+            if p.get("label"):
+                entry["label"] = p["label"]
+            phone_entries.append(entry)
+        if phone_entries:
+            body["phoneNumbers"] = phone_entries
+
+    # --- Organizations ---
+    if (organization or job_title) and not organizations:
+        if organization:
+            warnings.warn(
+                "Parameter 'organization' is deprecated. Use 'organizations=[{\"name\": ..., \"type\": ...}]' instead.",
+                DeprecationWarning,
+                stacklevel=3,
+            )
+        if job_title:
+            warnings.warn(
+                "Parameter 'job_title' is deprecated. Use 'organizations=[{\"title\": ...}]' instead.",
+                DeprecationWarning,
+                stacklevel=3,
+            )
         org_entry: Dict[str, str] = {}
         if organization:
             org_entry["name"] = organization
         if job_title:
             org_entry["title"] = job_title
-        body["organizations"] = [org_entry]
+        organizations = [org_entry]
+    elif (organization or job_title) and organizations:
+        warnings.warn(
+            "Both deprecated 'organization'/'job_title' and 'organizations' provided. Deprecated aliases ignored.",
+            DeprecationWarning,
+            stacklevel=3,
+        )
+
+    if organizations:
+        org_entries = []
+        for org in organizations:
+            entry = {}
+            if org.get("name"):
+                entry["name"] = org["name"]
+            if org.get("title"):
+                entry["title"] = org["title"]
+            if org.get("department"):
+                entry["department"] = org["department"]
+            if org.get("type"):
+                entry["type"] = org["type"]
+            if entry:
+                org_entries.append(entry)
+        if org_entries:
+            body["organizations"] = org_entries
 
     if notes:
         body["biographies"] = [{"value": notes, "contentType": "TEXT_PLAIN"}]
@@ -188,6 +358,105 @@ def _build_person_body(
         body["addresses"] = [{"formattedValue": address}]
 
     return body
+
+
+def _merge_phones(
+    existing: List[Dict[str, Any]],
+    new_phones: List[Dict[str, Any]],
+    mode: str,
+) -> List[Dict[str, Any]]:
+    """
+    Merge phone lists according to mode.
+
+    Args:
+        existing: Current phoneNumbers from People API.
+        new_phones: New phone entries (API format: {value, type?, ...}).
+        mode: 'merge', 'replace', or 'remove'.
+
+    Returns:
+        Merged phone list.
+    """
+    if mode == "replace":
+        return new_phones
+    if mode == "remove":
+        remove_normalized = {_normalize_phone(p["value"]) for p in new_phones if p.get("value")}
+        return [p for p in existing if _normalize_phone(p.get("value", "")) not in remove_normalized]
+    # merge: add new entries that don't already exist (dedup by canonicalForm or normalized value)
+    result = list(existing)
+    existing_keys = set()
+    for p in existing:
+        canonical = p.get("canonicalForm") or _normalize_phone(p.get("value", ""))
+        existing_keys.add(canonical)
+    for p in new_phones:
+        canonical = p.get("canonicalForm") or _normalize_phone(p.get("value", ""))
+        if canonical not in existing_keys:
+            result.append(p)
+            existing_keys.add(canonical)
+    return result
+
+
+def _merge_emails(
+    existing: List[Dict[str, Any]],
+    new_emails: List[Dict[str, Any]],
+    mode: str,
+) -> List[Dict[str, Any]]:
+    """
+    Merge email lists according to mode.
+
+    Args:
+        existing: Current emailAddresses from People API.
+        new_emails: New email entries (API format: {value, type?, ...}).
+        mode: 'merge', 'replace', or 'remove'.
+
+    Returns:
+        Merged email list.
+    """
+    if mode == "replace":
+        return new_emails
+    if mode == "remove":
+        remove_normalized = {_normalize_email(e["value"]) for e in new_emails if e.get("value")}
+        return [e for e in existing if _normalize_email(e.get("value", "")) not in remove_normalized]
+    # merge: add new entries not already present (dedup by lowercased address)
+    result = list(existing)
+    existing_keys = {_normalize_email(e.get("value", "")) for e in existing}
+    for e in new_emails:
+        normalized = _normalize_email(e.get("value", ""))
+        if normalized not in existing_keys:
+            result.append(e)
+            existing_keys.add(normalized)
+    return result
+
+
+def _merge_organizations(
+    existing: List[Dict[str, Any]],
+    new_orgs: List[Dict[str, Any]],
+    mode: str,
+) -> List[Dict[str, Any]]:
+    """
+    Merge organization lists according to mode.
+
+    Args:
+        existing: Current organizations from People API.
+        new_orgs: New org entries (API format).
+        mode: 'merge', 'replace', or 'remove'.
+
+    Returns:
+        Merged org list.
+    """
+    if mode == "replace":
+        return new_orgs
+    if mode == "remove":
+        remove_names = {(org.get("name") or "").lower() for org in new_orgs}
+        return [o for o in existing if (o.get("name") or "").lower() not in remove_names]
+    # merge: add orgs whose name doesn't already exist
+    result = list(existing)
+    existing_names = {(o.get("name") or "").lower() for o in existing}
+    for org in new_orgs:
+        org_name = (org.get("name") or "").lower()
+        if org_name not in existing_names:
+            result.append(org)
+            existing_names.add(org_name)
+    return result
 
 
 async def _warmup_search_cache(service: Resource, user_google_email: str) -> None:
@@ -398,11 +667,21 @@ async def manage_contact(
     contact_id: Optional[str] = None,
     given_name: Optional[str] = None,
     family_name: Optional[str] = None,
-    email: Optional[str] = None,
+    # New multi-value params
+    phones: Optional[List[Dict[str, Any]]] = None,
+    emails: Optional[List[Dict[str, Any]]] = None,
+    organizations: Optional[List[Dict[str, Any]]] = None,
+    notes: Optional[str] = None,
+    address: Optional[str] = None,
+    # Merge modes for update action
+    phones_mode: str = "merge",
+    emails_mode: str = "merge",
+    organizations_mode: str = "merge",
+    # Deprecated single-value aliases
     phone: Optional[str] = None,
+    email: Optional[str] = None,
     organization: Optional[str] = None,
     job_title: Optional[str] = None,
-    notes: Optional[str] = None,
 ) -> str:
     """
     Create, update, or delete a contact. Consolidated tool replacing create_contact,
@@ -414,11 +693,24 @@ async def manage_contact(
         contact_id (Optional[str]): The contact ID. Required for "update" and "delete" actions.
         given_name (Optional[str]): First name (for create/update).
         family_name (Optional[str]): Last name (for create/update).
-        email (Optional[str]): Email address (for create/update).
-        phone (Optional[str]): Phone number (for create/update).
-        organization (Optional[str]): Company/organization name (for create/update).
-        job_title (Optional[str]): Job title (for create/update).
+        phones (Optional[List[Dict]]): List of phone dicts {number, type?, label?}.
+            Supported types: mobile, work, home, main, workMobile, internal, other, etc.
+            Use type="internal" for internal PBX/ATS short numbers (e.g. 250, 301) — stored
+            as a standalone number without + prefix, displayed as "Internal: 250".
+        emails (Optional[List[Dict]]): List of email dicts {address, type?, label?}.
+        organizations (Optional[List[Dict]]): List of org dicts {name?, title?, department?, type?}.
         notes (Optional[str]): Additional notes (for create/update).
+        address (Optional[str]): Street address (for create/update).
+        phones_mode (str): How to update phones on "update": "merge" (default), "replace", or "remove".
+            merge = read-modify-write with dedup by canonicalForm/normalized value.
+            replace = overwrite all phones with provided list.
+            remove = delete phones matching provided numbers.
+        emails_mode (str): How to update emails on "update": "merge" (default), "replace", or "remove".
+        organizations_mode (str): How to update orgs on "update": "merge" (default), "replace", or "remove".
+        phone (Optional[str]): [DEPRECATED] Single phone number. Use phones=[{"number":..., "type":"mobile"}].
+        email (Optional[str]): [DEPRECATED] Email address. Use emails=[{"address":..., "type":"other"}].
+        organization (Optional[str]): [DEPRECATED] Company name. Use organizations=[{"name":...}].
+        job_title (Optional[str]): [DEPRECATED] Job title. Use organizations=[{"title":...}].
 
     Returns:
         str: Result of the action performed.
@@ -429,6 +721,16 @@ async def manage_contact(
             f"Invalid action '{action}'. Must be 'create', 'update', or 'delete'."
         )
 
+    for mode_name, mode_val in [
+        ("phones_mode", phones_mode),
+        ("emails_mode", emails_mode),
+        ("organizations_mode", organizations_mode),
+    ]:
+        if mode_val not in ("merge", "replace", "remove"):
+            raise UserInputError(
+                f"Invalid {mode_name} '{mode_val}'. Must be 'merge', 'replace', or 'remove'."
+            )
+
     logger.info(
         f"[manage_contact] Invoked. Action: '{action}', Email: '{user_google_email}'"
     )
@@ -437,11 +739,15 @@ async def manage_contact(
         body = _build_person_body(
             given_name=given_name,
             family_name=family_name,
-            email=email,
+            phones=phones,
+            emails=emails,
+            organizations=organizations,
+            notes=notes,
+            address=address,
             phone=phone,
+            email=email,
             organization=organization,
             job_title=job_title,
-            notes=notes,
         )
 
         if not body:
@@ -473,64 +779,105 @@ async def manage_contact(
         resource_name = contact_id
 
     if action == "update":
-        # Fetch the contact to get the etag
-        current = await asyncio.to_thread(
-            service.people()
-            .get(resourceName=resource_name, personFields=DETAILED_PERSON_FIELDS)
-            .execute
-        )
-
-        etag = current.get("etag")
-        if not etag:
-            raise Exception("Unable to get contact etag for update.")
-
-        body = _build_person_body(
-            given_name=given_name,
-            family_name=family_name,
-            email=email,
-            phone=phone,
-            organization=organization,
-            job_title=job_title,
-            notes=notes,
-        )
-
-        if not body:
-            raise UserInputError(
-                "At least one field (name, email, phone, etc.) must be provided."
+        # Retry loop for etag conflicts (412 Precondition Failed)
+        max_retries = 3
+        for attempt in range(max_retries):
+            # Fetch the contact to get current state and etag
+            current = await asyncio.to_thread(
+                service.people()
+                .get(resourceName=resource_name, personFields=DETAILED_PERSON_FIELDS)
+                .execute
             )
 
-        body["etag"] = etag
+            etag = current.get("etag")
+            if not etag:
+                raise Exception("Unable to get contact etag for update.")
 
-        update_person_fields = []
-        if "names" in body:
-            update_person_fields.append("names")
-        if "emailAddresses" in body:
-            update_person_fields.append("emailAddresses")
-        if "phoneNumbers" in body:
-            update_person_fields.append("phoneNumbers")
-        if "organizations" in body:
-            update_person_fields.append("organizations")
-        if "biographies" in body:
-            update_person_fields.append("biographies")
-        if "addresses" in body:
-            update_person_fields.append("addresses")
-
-        result = await asyncio.to_thread(
-            service.people()
-            .updateContact(
-                resourceName=resource_name,
-                body=body,
-                updatePersonFields=",".join(update_person_fields),
-                personFields=DETAILED_PERSON_FIELDS,
+            # Build body from provided params (returns new values only)
+            new_body = _build_person_body(
+                given_name=given_name,
+                family_name=family_name,
+                phones=phones,
+                emails=emails,
+                organizations=organizations,
+                notes=notes,
+                address=address,
+                phone=phone,
+                email=email,
+                organization=organization,
+                job_title=job_title,
             )
-            .execute
-        )
 
-        response = f"Contact Updated for {user_google_email}:\n\n"
-        response += _format_contact(result, detailed=True)
+            if not new_body:
+                raise UserInputError(
+                    "At least one field (name, email, phone, etc.) must be provided."
+                )
 
-        logger.info(f"Updated contact {resource_name} for {user_google_email}")
-        return response
+            # Apply merge modes for array fields
+            merged_body: Dict[str, Any] = dict(new_body)
+
+            if "phoneNumbers" in new_body:
+                merged_body["phoneNumbers"] = _merge_phones(
+                    current.get("phoneNumbers", []),
+                    new_body["phoneNumbers"],
+                    phones_mode,
+                )
+
+            if "emailAddresses" in new_body:
+                merged_body["emailAddresses"] = _merge_emails(
+                    current.get("emailAddresses", []),
+                    new_body["emailAddresses"],
+                    emails_mode,
+                )
+
+            if "organizations" in new_body:
+                merged_body["organizations"] = _merge_organizations(
+                    current.get("organizations", []),
+                    new_body["organizations"],
+                    organizations_mode,
+                )
+
+            merged_body["etag"] = etag
+
+            update_person_fields = []
+            if "names" in merged_body:
+                update_person_fields.append("names")
+            if "emailAddresses" in merged_body:
+                update_person_fields.append("emailAddresses")
+            if "phoneNumbers" in merged_body:
+                update_person_fields.append("phoneNumbers")
+            if "organizations" in merged_body:
+                update_person_fields.append("organizations")
+            if "biographies" in merged_body:
+                update_person_fields.append("biographies")
+            if "addresses" in merged_body:
+                update_person_fields.append("addresses")
+
+            try:
+                result = await asyncio.to_thread(
+                    service.people()
+                    .updateContact(
+                        resourceName=resource_name,
+                        body=merged_body,
+                        updatePersonFields=",".join(update_person_fields),
+                        personFields=DETAILED_PERSON_FIELDS,
+                    )
+                    .execute
+                )
+
+                response = f"Contact Updated for {user_google_email}:\n\n"
+                response += _format_contact(result, detailed=True)
+
+                logger.info(f"Updated contact {resource_name} for {user_google_email}")
+                return response
+
+            except HttpError as e:
+                if e.resp.status == 412 and attempt < max_retries - 1:
+                    logger.warning(
+                        f"[manage_contact] etag conflict on attempt {attempt + 1}, retrying..."
+                    )
+                    continue
+                raise
 
     # action == "delete"
     await asyncio.to_thread(
@@ -687,9 +1034,10 @@ async def manage_contacts_batch(
     service: Resource,
     user_google_email: str,
     action: str,
-    contacts: Optional[List[Dict[str, str]]] = None,
-    updates: Optional[List[Dict[str, str]]] = None,
+    contacts: Optional[List[Dict[str, Any]]] = None,
+    updates: Optional[List[Dict[str, Any]]] = None,
     contact_ids: Optional[StringList] = None,
+    field: Optional[str] = None,
 ) -> str:
     """
     Batch create, update, or delete contacts. Consolidated tool replacing
@@ -698,12 +1046,17 @@ async def manage_contacts_batch(
     Args:
         user_google_email (str): The user's Google email address. Required.
         action (str): The action to perform: "create", "update", or "delete".
-        contacts (Optional[List[Dict[str, str]]]): List of contact dicts for "create" action.
-            Each dict may contain: given_name, family_name, email, phone, organization, job_title.
-        updates (Optional[List[Dict[str, str]]]): List of update dicts for "update" action.
-            Each dict must contain contact_id and may contain: given_name, family_name,
-            email, phone, organization, job_title.
+        contacts (Optional[List[Dict]]): List of contact dicts for "create" action.
+            Each dict may contain: given_name, family_name, phones, emails, organizations,
+            notes, address. Deprecated: phone, email, organization, job_title.
+        updates (Optional[List[Dict]]): List of update dicts for "update" action.
+            Each dict must contain contact_id and may contain the same fields as contacts.
         contact_ids (Optional[List[str]]): List of contact IDs for "delete" action.
+        field (str): For "update" action — the single People API field to update across
+            all contacts in this batch. Required. Must be one of: names, phoneNumbers,
+            emailAddresses, organizations, biographies, addresses.
+            Using a single field per batch call prevents unintentional data loss from
+            a union updateMask overwriting unrelated fields.
 
     Returns:
         str: Result of the batch action performed.
@@ -730,8 +1083,14 @@ async def manage_contacts_batch(
             body = _build_person_body(
                 given_name=contact.get("given_name"),
                 family_name=contact.get("family_name"),
-                email=contact.get("email"),
+                phones=contact.get("phones"),
+                emails=contact.get("emails"),
+                organizations=contact.get("organizations"),
+                notes=contact.get("notes"),
+                address=contact.get("address"),
+                # deprecated aliases
                 phone=contact.get("phone"),
+                email=contact.get("email"),
                 organization=contact.get("organization"),
                 job_title=contact.get("job_title"),
             )
@@ -771,7 +1130,24 @@ async def manage_contacts_batch(
         if len(updates) > 200:
             raise UserInputError("Maximum 200 contacts can be updated in a batch.")
 
-        # Fetch all contacts to get their etags
+        # Validate field param — required to avoid multi-field mask issues
+        valid_fields = {
+            "names", "phoneNumbers", "emailAddresses",
+            "organizations", "biographies", "addresses",
+        }
+        if not field:
+            raise UserInputError(
+                "field parameter is required for batch 'update' action. "
+                "Must be one of: names, phoneNumbers, emailAddresses, organizations, "
+                "biographies, addresses. Use a single field per batch call to avoid "
+                "unintentional data loss from a union updateMask."
+            )
+        if field not in valid_fields:
+            raise UserInputError(
+                f"Invalid field '{field}'. Must be one of: {', '.join(sorted(valid_fields))}."
+            )
+
+        # Collect resource names for batch etag fetch
         resource_names = []
         for update in updates:
             cid = update.get("contact_id")
@@ -798,8 +1174,19 @@ async def manage_contacts_batch(
             if rname and etag:
                 etags[rname] = etag
 
-        update_bodies = []
-        update_fields_set: set = set()
+        # Map field name to body key produced by _build_person_body
+        field_to_body_key = {
+            "names": "names",
+            "phoneNumbers": "phoneNumbers",
+            "emailAddresses": "emailAddresses",
+            "organizations": "organizations",
+            "biographies": "biographies",
+            "addresses": "addresses",
+        }
+        body_key = field_to_body_key[field]
+
+        # Build contacts map (Dict[resourceName, Person]) — required by batchUpdateContacts API
+        contacts_map: Dict[str, Any] = {}
 
         for update in updates:
             cid = update.get("contact_id", "")
@@ -814,32 +1201,36 @@ async def manage_contacts_batch(
             body = _build_person_body(
                 given_name=update.get("given_name"),
                 family_name=update.get("family_name"),
-                email=update.get("email"),
+                phones=update.get("phones"),
+                emails=update.get("emails"),
+                organizations=update.get("organizations"),
+                notes=update.get("notes"),
+                address=update.get("address"),
+                # deprecated aliases
                 phone=update.get("phone"),
+                email=update.get("email"),
                 organization=update.get("organization"),
                 job_title=update.get("job_title"),
             )
 
-            if body:
-                body["resourceName"] = cid
-                body["etag"] = etag
-                update_bodies.append({"person": body})
+            if body_key not in body:
+                logger.warning(
+                    f"Field '{field}' (key '{body_key}') not present in update for {cid}, skipping"
+                )
+                continue
 
-                if "names" in body:
-                    update_fields_set.add("names")
-                if "emailAddresses" in body:
-                    update_fields_set.add("emailAddresses")
-                if "phoneNumbers" in body:
-                    update_fields_set.add("phoneNumbers")
-                if "organizations" in body:
-                    update_fields_set.add("organizations")
+            person_body = {
+                "etag": etag,
+                body_key: body[body_key],
+            }
+            contacts_map[cid] = person_body
 
-        if not update_bodies:
+        if not contacts_map:
             raise UserInputError("No valid update data provided.")
 
         batch_body = {
-            "contacts": update_bodies,
-            "updateMask": ",".join(update_fields_set),
+            "contacts": contacts_map,
+            "updateMask": field,
             "readMask": DEFAULT_PERSON_FIELDS,
         }
 
