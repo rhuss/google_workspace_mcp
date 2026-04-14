@@ -43,7 +43,7 @@ Read values from a range in a spreadsheet.
 | spreadsheet_id | string | yes | | |
 | range_name | string | no | A1:Z1000 | A1 notation, e.g. `Sheet1!A1:D10` |
 | include_hyperlinks | boolean | no | false | Fetch hyperlink metadata (slower) |
-| include_notes | boolean | no | false | *(unreleased)* Fetch cell notes (slower) |
+| include_notes | boolean | no | false | Fetch cell notes (slower) |
 
 ### modify_sheet_values
 Write, update, or clear values in a range.

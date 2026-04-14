@@ -111,7 +111,7 @@ Create a draft. Same capabilities as send but with additional signature/quoting 
 | references | string | no | | Message-ID chain |
 | attachments | array | no | | Same format as send |
 | include_signature | boolean | no | true | Append Gmail signature if available |
-| quote_original | boolean | no | false | *(unreleased)* Include original message as quoted reply (requires thread_id) |
+| quote_original | boolean | no | false | Include original message as quoted reply (requires thread_id) |
 
 ---
 
@@ -215,7 +215,7 @@ Create or delete a filter.
 - Use label IDs (not names) in `modify_gmail_message_labels`, `batch_modify_gmail_message_labels`, and filter actions.
 
 ### Drafts vs Send
-- Use `draft_gmail_message` when you want the user to review before sending. It supports `include_signature` (auto-appends Gmail signature) and `quote_original` (includes quoted reply text, *unreleased*).
+- Use `draft_gmail_message` when you want the user to review before sending. It supports `include_signature` (auto-appends Gmail signature) and `quote_original` (includes quoted reply text).
 - Use `send_gmail_message` for immediate delivery.
 
 ### Attachments

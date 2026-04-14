@@ -86,7 +86,7 @@ Insert or replace text and/or apply character formatting in a single operation. 
 | bold | boolean | no | | |
 | italic | boolean | no | | |
 | underline | boolean | no | | |
-| strikethrough | boolean | no | | *(unreleased)* |
+| strikethrough | boolean | no | | |
 | font_size | integer | no | | Size in points |
 | font_family | string | no | | e.g. "Arial", "Times New Roman" |
 | text_color | string | no | | Hex color `#RRGGBB` |
@@ -126,7 +126,7 @@ Apply paragraph-level formatting: heading styles (H1-H6), lists (bulleted/number
 | indent_end | number | no | | Right indent in points |
 | space_above | number | no | | Points above paragraph |
 | space_below | number | no | | Points below paragraph |
-| named_style_type | string | no | | *(unreleased)* `NORMAL_TEXT`, `TITLE`, `SUBTITLE`, `HEADING_1`-`HEADING_6`. Mutually exclusive with heading_level |
+| named_style_type | string | no | | `NORMAL_TEXT`, `TITLE`, `SUBTITLE`, `HEADING_1`-`HEADING_6`. Mutually exclusive with heading_level |
 | list_type | string | no | | `UNORDERED` (bullets), `ORDERED` (numbers) |
 | list_nesting_level | integer | no | 0 | Nesting depth 0-8 |
 
@@ -304,7 +304,7 @@ Execute multiple operations atomically in a single API call. Each operation is a
 | `insert_text` | `index`, `text` | |
 | `delete_text` | `start_index`, `end_index` | |
 | `replace_text` | `start_index`, `end_index`, `text` | |
-| `format_text` | `start_index`, `end_index` | `bold`, `italic`, `underline`, `strikethrough` *(unreleased)*, `font_size`, `font_family`, `text_color`, `background_color`, `link_url` |
+| `format_text` | `start_index`, `end_index` | `bold`, `italic`, `underline`, `strikethrough`, `font_size`, `font_family`, `text_color`, `background_color`, `link_url` |
 | `update_paragraph_style` | `start_index`, `end_index` | `heading_level` (0-6), `alignment`, `line_spacing`, `indent_first_line`, `indent_start`, `indent_end`, `space_above`, `space_below` |
 | `insert_table` | `index`, `rows`, `columns` | |
 | `insert_page_break` | `index` | |
