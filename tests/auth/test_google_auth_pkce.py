@@ -132,5 +132,8 @@ def test_load_client_secrets_from_env_supports_public_client():
 
     assert config is not None
     assert "installed" in config
-    assert config["installed"]["client_id"] == "public-client-id.apps.googleusercontent.com"
+    assert (
+        config["installed"]["client_id"]
+        == "public-client-id.apps.googleusercontent.com"
+    )
     assert config["installed"]["client_secret"] == ""

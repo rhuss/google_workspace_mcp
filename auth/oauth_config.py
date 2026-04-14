@@ -135,7 +135,9 @@ class OAuthConfig:
 
         _set_if_absent("FASTMCP_SERVER_AUTH_GOOGLE_CLIENT_ID", self.client_id)
         if self.client_secret:
-            _set_if_absent("FASTMCP_SERVER_AUTH_GOOGLE_CLIENT_SECRET", self.client_secret)
+            _set_if_absent(
+                "FASTMCP_SERVER_AUTH_GOOGLE_CLIENT_SECRET", self.client_secret
+            )
         _set_if_absent("FASTMCP_SERVER_AUTH_GOOGLE_BASE_URL", self.get_oauth_base_url())
         _set_if_absent("FASTMCP_SERVER_AUTH_GOOGLE_REDIRECT_PATH", self.redirect_path)
 
