@@ -173,6 +173,12 @@ The license is 21 lines and says what it means.
 
 </div>
 
+<table>
+<tr>
+<td valign="top" width="50%">
+
+**Confidential Client Quick Start**
+
 ```bash
 # 1. Credentials
 export GOOGLE_OAUTH_CLIENT_ID="..."
@@ -186,6 +192,34 @@ uvx workspace-mcp --tool-tier complete   # everything
 # Or cherry-pick services
 uv run main.py --tools gmail drive calendar
 ```
+
+</td>
+<td valign="top" width="50%">
+
+**Secretless / Public OAuth 2.1 (PKCE) Quick Start**
+
+```bash
+# 1. Credentials
+export MCP_ENABLE_OAUTH21=true
+export GOOGLE_OAUTH_CLIENT_ID="..."
+export WORKSPACE_MCP_PORT=8000
+export GOOGLE_OAUTH_REDIRECT_URI="http://localhost:${WORKSPACE_MCP_PORT}/oauth2callback"
+export OAUTHLIB_INSECURE_TRANSPORT=1
+# Leave GOOGLE_OAUTH_CLIENT_SECRET unset for public PKCE clients
+export FASTMCP_SERVER_AUTH_GOOGLE_JWT_SIGNING_KEY="$(openssl rand -hex 32)"
+
+# 2. Launch — OAuth 2.1 requires HTTP transport
+uvx workspace-mcp --transport streamable-http --tool-tier core
+uvx workspace-mcp --transport streamable-http --tool-tier extended
+uvx workspace-mcp --transport streamable-http --tool-tier complete
+
+# Or cherry-pick services
+uv run main.py --transport streamable-http --tools gmail drive calendar
+```
+
+</td>
+</tr>
+</table>
 
 <sub>[Credential setup →](#-credential-configuration) · [All launch options →](#start-the-server) · [Tier details →](#tool-tiers)</sub>
 
