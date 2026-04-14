@@ -64,7 +64,7 @@ that send ``'["value"]'`` instead of ``["value"]``.
 """
 
 
-DictList = Annotated[List[dict], BeforeValidator(_coerce_json_str_to_list)]
+DictList = Annotated[List[dict[str, Any]], BeforeValidator(_coerce_json_str_to_list)]
 """``List[dict]`` that also accepts a JSON-encoded string of an array.
 
 Use in tool signatures instead of ``List[dict]`` to work around MCP clients
