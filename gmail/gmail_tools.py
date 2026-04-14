@@ -28,6 +28,7 @@ from core.utils import (
     UserInputError,
     StringList,
     JsonDict,
+    DictList,
 )
 from core.server import server
 from auth.scopes import (
@@ -1534,7 +1535,7 @@ async def send_gmail_message(
         ),
     ] = None,
     attachments: Annotated[
-        Optional[List[Dict[str, str]]],
+        Optional[DictList],
         Field(
             description='Optional list of attachments. Each can have: "path" (file path, auto-encodes), OR "content" (standard base64, not urlsafe) + "filename". Optional "mime_type". Example: [{"path": "/path/to/file.pdf"}] or [{"filename": "doc.pdf", "content": "base64data", "mime_type": "application/pdf"}]',
         ),
@@ -1741,7 +1742,7 @@ async def draft_gmail_message(
         ),
     ] = None,
     attachments: Annotated[
-        Optional[List[Dict[str, str]]],
+        Optional[DictList],
         Field(
             description="Optional list of attachments. Each can have: 'path' (file path, auto-encodes), OR 'content' (standard base64, not urlsafe) + 'filename'. Optional 'mime_type' (auto-detected from path if not provided).",
         ),
