@@ -1,5 +1,7 @@
 from types import SimpleNamespace
 
+import pytest
+
 import core.server as server_module
 
 
@@ -105,3 +107,33 @@ def test_configure_server_for_http_supports_public_client_with_jwt_key(monkeypat
     assert captured["client_id"] == "public-client-id"
     assert captured["client_secret"] is None
     assert captured["jwt_signing_key"]
+
+
+def test_configure_server_for_http_rejects_public_client_without_jwt_key(
+    monkeypatch,
+):
+    monkeypatch.delenv("FASTMCP_SERVER_AUTH_GOOGLE_JWT_SIGNING_KEY", raising=False)
+    monkeypatch.setattr(server_module, "get_transport_mode", lambda: "streamable-http")
+    monkeypatch.setattr(server_module, "GoogleProvider", object)
+    monkeypatch.setattr(server_module, "set_auth_provider", lambda provider: None)
+    monkeypatch.setattr(server_module, "_auth_provider", server_module._auth_provider)
+    monkeypatch.setattr(server_module.server, "auth", server_module.server.auth)
+    monkeypatch.setattr(
+        "auth.oauth_config.get_oauth_config",
+        lambda: SimpleNamespace(
+            is_oauth21_enabled=lambda: True,
+            is_configured=lambda: True,
+            is_public_client=lambda: True,
+            is_external_oauth21_provider=lambda: False,
+            client_id="public-client-id",
+            client_secret=None,
+            get_oauth_base_url=lambda: "https://workspace-mcp.example.test",
+            redirect_path="/oauth2callback",
+        ),
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="Public client OAuth 2.1 requires FASTMCP_SERVER_AUTH_GOOGLE_JWT_SIGNING_KEY",
+    ):
+        server_module.configure_server_for_http()

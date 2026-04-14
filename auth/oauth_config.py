@@ -35,9 +35,6 @@ class OAuthConfig:
         # OAuth client configuration
         self.client_id = os.getenv("GOOGLE_OAUTH_CLIENT_ID")
         self.client_secret = os.getenv("GOOGLE_OAUTH_CLIENT_SECRET")
-        self.jwt_signing_key_override = os.getenv(
-            "FASTMCP_SERVER_AUTH_GOOGLE_JWT_SIGNING_KEY", ""
-        ).strip()
 
         # OAuth 2.1 configuration
         self.oauth21_enabled = (
@@ -84,17 +81,6 @@ class OAuthConfig:
                 "Set GOOGLE_SERVICE_ACCOUNT_KEY_FILE or GOOGLE_SERVICE_ACCOUNT_KEY_JSON, "
                 "but not MCP_ENABLE_OAUTH21=true."
             )
-        if (
-            self.oauth21_enabled
-            and self.is_public_client()
-            and not self.jwt_signing_key_override
-        ):
-            raise ValueError(
-                "Public client OAuth 2.1 mode requires "
-                "FASTMCP_SERVER_AUTH_GOOGLE_JWT_SIGNING_KEY when "
-                "GOOGLE_OAUTH_CLIENT_SECRET is not set."
-            )
-
         # Transport mode (will be set at runtime)
         self._transport_mode = "stdio"  # Default
 
