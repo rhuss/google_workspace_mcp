@@ -52,7 +52,7 @@ Plugin users cannot pass CLI args directly. Use `WORKSPACE_MCP_TOOLS` and `WORKS
 
 ## MCP config examples
 
-```jsonl
+```json
 {"command": "uvx", "args": ["workspace-mcp"], "env": {"GOOGLE_OAUTH_CLIENT_ID": "...", "GOOGLE_OAUTH_CLIENT_SECRET": "..."}}
 {"command": "uvx", "args": ["workspace-mcp", "--single-user"], "env": {"GOOGLE_OAUTH_CLIENT_ID": "...", "GOOGLE_OAUTH_CLIENT_SECRET": "..."}}
 {"command": "uvx", "args": ["workspace-mcp", "--single-user", "--read-only"], "env": {"GOOGLE_OAUTH_CLIENT_ID": "...", "GOOGLE_OAUTH_CLIENT_SECRET": "..."}}
