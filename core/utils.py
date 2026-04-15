@@ -469,7 +469,22 @@ def extract_pdf_text(file_bytes: bytes) -> Optional[str]:
 def encode_image_content(file_bytes: bytes, mime_type: str) -> str:
     """
     Base64-encode image bytes with a mime type metadata prefix.
+
+    Args:
+        file_bytes: The image file content as bytes.
+        mime_type: The MIME type of the image (must start with "image/").
+
+    Returns:
+        str: Base64-encoded image with mime type prefix.
+
+    Raises:
+        ValueError: If mime_type is not an image MIME type.
     """
+    if not mime_type.startswith("image/"):
+        raise ValueError(
+            f"Expected image/* MIME type, got '{mime_type}'. "
+            "Only image content can be base64-encoded for multimodal clients."
+        )
     encoded = base64.b64encode(file_bytes).decode("ascii")
     return f"[base64_image:{mime_type}]{encoded}"
 

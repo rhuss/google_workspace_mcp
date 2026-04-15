@@ -2,6 +2,7 @@
 
 import base64
 import io
+import pytest
 
 from tests.helpers import _make_minimal_pdf
 from core.utils import IMAGE_MIME_TYPES, encode_image_content, extract_pdf_text
@@ -56,6 +57,15 @@ def test_encode_image_content_jpeg():
     assert result.startswith("[base64_image:image/jpeg]")
     encoded_part = result[len("[base64_image:image/jpeg]") :]
     assert base64.b64decode(encoded_part) == raw
+
+
+def test_encode_image_content_rejects_non_image_mime():
+    """encode_image_content should raise ValueError for non-image MIME types."""
+    raw = b"some content"
+    with pytest.raises(ValueError) as exc_info:
+        encode_image_content(raw, "application/pdf")
+    assert "Expected image/* MIME type" in str(exc_info.value)
+    assert "application/pdf" in str(exc_info.value)
 
 
 # ---------------------------------------------------------------------------

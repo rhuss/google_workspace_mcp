@@ -220,7 +220,10 @@ async def get_drive_file_content(
     }
 
     if mime_type in office_mime_types:
-        office_text = extract_office_xml_text(file_content_bytes, mime_type)
+        # Offload Office XML extraction to a thread to avoid blocking the event loop
+        office_text = await asyncio.to_thread(
+            extract_office_xml_text, file_content_bytes, mime_type
+        )
         if office_text:
             body_text = office_text
         else:
@@ -233,7 +236,8 @@ async def get_drive_file_content(
                     f"{len(file_content_bytes)} bytes]"
                 )
     elif mime_type == "application/pdf":
-        pdf_text = extract_pdf_text(file_content_bytes)
+        # Offload PDF text extraction to a thread to avoid blocking the event loop
+        pdf_text = await asyncio.to_thread(extract_pdf_text, file_content_bytes)
         if pdf_text:
             body_text = pdf_text
         else:
