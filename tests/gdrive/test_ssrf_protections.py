@@ -1,5 +1,5 @@
 """
-Unit tests for Drive SSRF protections and DNS pinning helpers.
+Unit tests for SSRF protections and DNS pinning helpers.
 """
 
 import os
@@ -11,7 +11,7 @@ import pytest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
-from gdrive import drive_tools
+from core import http_utils
 
 
 def test_resolve_and_validate_host_fails_closed_on_dns_error(monkeypatch):
@@ -23,7 +23,7 @@ def test_resolve_and_validate_host_fails_closed_on_dns_error(monkeypatch):
     monkeypatch.setattr(socket, "getaddrinfo", fake_getaddrinfo)
 
     with pytest.raises(ValueError, match="Refusing request \\(fail-closed\\)"):
-        drive_tools._resolve_and_validate_host("example.com")
+        http_utils.resolve_and_validate_host("example.com")
 
 
 def test_resolve_and_validate_host_rejects_ipv6_private(monkeypatch):
@@ -43,7 +43,7 @@ def test_resolve_and_validate_host_rejects_ipv6_private(monkeypatch):
     monkeypatch.setattr(socket, "getaddrinfo", fake_getaddrinfo)
 
     with pytest.raises(ValueError, match="private/internal networks"):
-        drive_tools._resolve_and_validate_host("ipv6-internal.example")
+        http_utils.resolve_and_validate_host("ipv6-internal.example")
 
 
 def test_resolve_and_validate_host_deduplicates_addresses(monkeypatch):
@@ -76,7 +76,7 @@ def test_resolve_and_validate_host_deduplicates_addresses(monkeypatch):
 
     monkeypatch.setattr(socket, "getaddrinfo", fake_getaddrinfo)
 
-    assert drive_tools._resolve_and_validate_host("example.com") == [
+    assert http_utils.resolve_and_validate_host("example.com") == [
         "93.184.216.34",
         "2606:2800:220:1:248:1893:25c8:1946",
     ]
@@ -108,11 +108,11 @@ async def test_fetch_url_with_pinned_ip_uses_pinned_target_and_host_header(monke
             return httpx.Response(200, request=httpx.Request("GET", request["url"]))
 
     monkeypatch.setattr(
-        drive_tools, "_validate_url_not_internal", lambda url: ["93.184.216.34"]
+        http_utils, "validate_url_not_internal", lambda url: ["93.184.216.34"]
     )
-    monkeypatch.setattr(drive_tools.httpx, "AsyncClient", FakeAsyncClient)
+    monkeypatch.setattr(http_utils.httpx, "AsyncClient", FakeAsyncClient)
 
-    response = await drive_tools._fetch_url_with_pinned_ip(
+    response = await http_utils.fetch_url_with_pinned_ip(
         "https://example.com/path/to/file.txt?x=1"
     )
 
@@ -140,9 +140,9 @@ async def test_ssrf_safe_fetch_follows_relative_redirects(monkeypatch):
             )
         return httpx.Response(200, request=httpx.Request("GET", url), content=b"ok")
 
-    monkeypatch.setattr(drive_tools, "_fetch_url_with_pinned_ip", fake_fetch)
+    monkeypatch.setattr(http_utils, "fetch_url_with_pinned_ip", fake_fetch)
 
-    response = await drive_tools._ssrf_safe_fetch("https://example.com/start")
+    response = await http_utils.ssrf_safe_fetch("https://example.com/start")
 
     assert response.status_code == 200
     assert calls == ["https://example.com/start", "https://example.com/next"]
@@ -159,7 +159,7 @@ async def test_ssrf_safe_fetch_rejects_disallowed_redirect_scheme(monkeypatch):
             request=httpx.Request("GET", url),
         )
 
-    monkeypatch.setattr(drive_tools, "_fetch_url_with_pinned_ip", fake_fetch)
+    monkeypatch.setattr(http_utils, "fetch_url_with_pinned_ip", fake_fetch)
 
     with pytest.raises(ValueError, match="Redirect to disallowed scheme"):
-        await drive_tools._ssrf_safe_fetch("https://example.com/start")
+        await http_utils.ssrf_safe_fetch("https://example.com/start")
