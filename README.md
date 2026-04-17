@@ -80,7 +80,7 @@
 
 Workspace MCP is the single most complete MCP server that integrates all major Google Workspace services with AI assistants. It supports both single-user operation and multi-user authentication via OAuth 2.1, making it a powerful backend for custom applications. Built with FastMCP for optimal performance, featuring advanced authentication handling, service caching, and streamlined development patterns. The entire toolset is available for CLI usage supporting both local and remote instances.
 
-**Simplified Setup**: Now uses Google Desktop OAuth clients - no redirect URIs or port configuration needed!
+**Simplified Setup**: can use Google Desktop OAuth clients for local runs - no redirect URIs or port configuration needed!
 
 
 ## <span style="color:#adbcbc">Features</span>
