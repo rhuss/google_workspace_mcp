@@ -53,3 +53,20 @@ def test_validate_file_path_keeps_attachment_storage_allowed_with_custom_allowli
 
     assert validate_file_path(str(stored_file)) == stored_file.resolve()
     assert validate_file_path(str(shared_file)) == shared_file.resolve()
+
+
+def test_validate_file_path_strips_whitespace_from_allowed_file_dirs(
+    tmp_path, monkeypatch
+):
+    storage_dir = tmp_path / "attachments"
+    storage_dir.mkdir()
+    monkeypatch.setattr(attachment_storage, "STORAGE_DIR", storage_dir)
+
+    spaced_dir = tmp_path / "shared"
+    spaced_dir.mkdir()
+    monkeypatch.setenv("ALLOWED_FILE_DIRS", f"  {spaced_dir}  ")
+
+    shared_file = spaced_dir / "report.txt"
+    shared_file.write_text("report", encoding="utf-8")
+
+    assert validate_file_path(str(shared_file)) == shared_file.resolve()
