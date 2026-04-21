@@ -1,0 +1,55 @@
+from pathlib import Path
+
+import pytest
+
+import core.attachment_storage as attachment_storage
+from core.utils import validate_file_path
+
+
+def test_validate_file_path_allows_attachment_storage_by_default(
+    tmp_path, monkeypatch
+):
+    monkeypatch.delenv("ALLOWED_FILE_DIRS", raising=False)
+    monkeypatch.setattr(attachment_storage, "STORAGE_DIR", tmp_path)
+
+    file_path = tmp_path / "downloaded.txt"
+    file_path.write_text("attachment", encoding="utf-8")
+
+    assert validate_file_path(str(file_path)) == file_path.resolve()
+
+
+def test_validate_file_path_blocks_home_by_default(tmp_path, monkeypatch):
+    monkeypatch.delenv("ALLOWED_FILE_DIRS", raising=False)
+    storage_dir = tmp_path / "attachments"
+    storage_dir.mkdir()
+    monkeypatch.setattr(attachment_storage, "STORAGE_DIR", storage_dir)
+
+    home_dir = tmp_path / "home"
+    home_dir.mkdir()
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: home_dir))
+
+    secret_file = home_dir / ".bash_history"
+    secret_file.write_text("secret", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="outside permitted directories"):
+        validate_file_path(str(secret_file))
+
+
+def test_validate_file_path_keeps_attachment_storage_allowed_with_custom_allowlist(
+    tmp_path, monkeypatch
+):
+    storage_dir = tmp_path / "attachments"
+    storage_dir.mkdir()
+    monkeypatch.setattr(attachment_storage, "STORAGE_DIR", storage_dir)
+
+    extra_dir = tmp_path / "shared"
+    extra_dir.mkdir()
+    monkeypatch.setenv("ALLOWED_FILE_DIRS", str(extra_dir))
+
+    stored_file = storage_dir / "saved.txt"
+    stored_file.write_text("attachment", encoding="utf-8")
+    shared_file = extra_dir / "report.txt"
+    shared_file.write_text("report", encoding="utf-8")
+
+    assert validate_file_path(str(stored_file)) == stored_file.resolve()
+    assert validate_file_path(str(shared_file)) == shared_file.resolve()
