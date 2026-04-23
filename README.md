@@ -253,6 +253,13 @@ uv run main.py --transport streamable-http --tools gmail drive calendar
 | `OAUTH_ALLOWED_ORIGINS` | | Comma-separated additional CORS origins |
 | `WORKSPACE_MCP_OAUTH_PROXY_STORAGE_BACKEND` | | `memory`, `disk`, or `valkey` — see [storage backends](#oauth-proxy-storage-backends) |
 | `FASTMCP_SERVER_AUTH_GOOGLE_JWT_SIGNING_KEY` | | Custom encryption key for OAuth proxy storage; required for public OAuth 2.1 clients when `GOOGLE_OAUTH_CLIENT_SECRET` is omitted |
+| **🗄️ Credential Store** | | |
+| `WORKSPACE_MCP_CREDENTIAL_STORE_BACKEND` | | `local_directory` (default) or `gcs` — see [credential store system](#credential-store-system) |
+| `WORKSPACE_MCP_CREDENTIALS_DIR` | | Directory for the `local_directory` backend |
+| `GOOGLE_MCP_CREDENTIALS_DIR` | | Backward-compatible alias for `WORKSPACE_MCP_CREDENTIALS_DIR` |
+| `WORKSPACE_MCP_GCS_BUCKET` | | **Required when backend is `gcs`** — GCS bucket name |
+| `WORKSPACE_MCP_GCS_PREFIX` | | Optional object-name prefix for the `gcs` backend |
+| `WORKSPACE_MCP_GCS_REQUIRE_CMEK` | | `true` to require a bucket default KMS key at startup (fails fast if unset) |
 | **🔧 Service Account** | | |
 | `GOOGLE_SERVICE_ACCOUNT_KEY_FILE` | | Path to service account JSON key file (domain-wide delegation) |
 | `GOOGLE_SERVICE_ACCOUNT_KEY_JSON` | | Inline service account JSON key (alternative to file) |
@@ -1471,7 +1478,7 @@ export WORKSPACE_MCP_GCS_REQUIRE_CMEK="true"                # optional; see belo
 
 By default GCS encrypts objects with Google-managed keys. For customer-managed encryption, set a default KMS key on the bucket (e.g. via Terraform's `google_storage_bucket.encryption.default_kms_key_name`). All credentials written to the bucket will inherit the key transparently — no application-level key to manage.
 
-To guard against accidentally deploying against a bucket without CMEK, set `WORKSPACE_MCP_GCS_REQUIRE_CMEK=true`. The store will verify the bucket has a default KMS key at startup and refuse to initialise otherwise. Note that this check reads bucket metadata, so the runtime service account additionally needs `storage.buckets.get` (provided by `roles/storage.legacyBucketReader` or `roles/storage.admin`) — `roles/storage.objectUser` alone only covers object operations.
+To guard against accidentally deploying against a bucket without CMEK, set `WORKSPACE_MCP_GCS_REQUIRE_CMEK=true`. The store will verify the bucket has a default KMS key at startup and refuse to initialise otherwise. Note that this check reads bucket metadata, so the runtime service account additionally needs `storage.buckets.get` — grant `roles/storage.bucketViewer` on the bucket (or a custom role containing `storage.buckets.get`) in addition to the object-level role. `roles/storage.objectUser` alone covers only object operations.
 
 **Usage Example:**
 ```python

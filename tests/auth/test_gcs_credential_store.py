@@ -121,7 +121,7 @@ class TestRoundTrip:
 
 
 class TestAtomicWrite:
-    """Store path must use generation preconditions and retry on contention."""
+    """Store path must use generation preconditions and fail closed on contention."""
 
     def test_existing_blob_uses_current_generation(
         self, cred_store, mock_storage_client, mock_creds
@@ -135,34 +135,20 @@ class TestAtomicWrite:
         _, kwargs = blob.upload_from_string.call_args
         assert kwargs["if_generation_match"] == 12345
 
-    def test_precondition_failed_triggers_retry(
+    def test_precondition_failed_returns_false_without_retry(
         self, cred_store, mock_storage_client, mock_creds
     ):
-        """First upload hits PreconditionFailed; second succeeds."""
+        """On 412 (concurrent writer), fail fast rather than overwrite with
+        stale payload. Caller must re-read and re-derive for the next write."""
         blob = MagicMock()
         blob.reload.return_value = None
         blob.generation = 1
-        blob.upload_from_string.side_effect = [
-            PreconditionFailed("racing writer"),
-            None,  # succeed on retry
-        ]
-        mock_storage_client.blob.return_value = blob
-
-        assert cred_store.store_credential("user@example.com", mock_creds) is True
-        assert blob.upload_from_string.call_count == 2
-
-    def test_persistent_precondition_failed_returns_false(
-        self, cred_store, mock_storage_client, mock_creds
-    ):
-        """Three consecutive 412s give up."""
-        blob = MagicMock()
-        blob.reload.return_value = None
-        blob.generation = 1
-        blob.upload_from_string.side_effect = PreconditionFailed("persistent race")
+        blob.upload_from_string.side_effect = PreconditionFailed("racing writer")
         mock_storage_client.blob.return_value = blob
 
         assert cred_store.store_credential("user@example.com", mock_creds) is False
-        assert blob.upload_from_string.call_count == 3
+        # Exactly one upload attempt — no retry with the same (potentially stale) payload
+        assert blob.upload_from_string.call_count == 1
 
     def test_reload_non_notfound_error_returns_false(
         self, cred_store, mock_storage_client, mock_creds
@@ -281,10 +267,25 @@ class TestBackendSelection:
         monkeypatch.delenv("WORKSPACE_MCP_GCS_REQUIRE_CMEK", raising=False)
         assert isinstance(get_credential_store(), GCSCredentialStore)
 
-    def test_unknown_backend_falls_back_to_local(self, monkeypatch, tmp_path):
+    def test_unknown_backend_raises(self, monkeypatch, tmp_path):
+        """Typos/invalid values must not silently fall back — they raise."""
         monkeypatch.setenv("WORKSPACE_MCP_CREDENTIAL_STORE_BACKEND", "gibberish")
         monkeypatch.setenv("WORKSPACE_MCP_CREDENTIALS_DIR", str(tmp_path))
+        with pytest.raises(ValueError, match="Unsupported.*BACKEND"):
+            get_credential_store()
+
+    def test_empty_backend_uses_local_directory(self, monkeypatch, tmp_path):
+        """Empty env var defaults to local_directory."""
+        monkeypatch.setenv("WORKSPACE_MCP_CREDENTIAL_STORE_BACKEND", "")
+        monkeypatch.setenv("WORKSPACE_MCP_CREDENTIALS_DIR", str(tmp_path))
         assert isinstance(get_credential_store(), LocalDirectoryCredentialStore)
+
+    def test_whitespace_around_backend_is_stripped(self, monkeypatch, mock_storage_client):
+        """Trailing whitespace on the env var doesn't cause a misclassification."""
+        monkeypatch.setenv("WORKSPACE_MCP_CREDENTIAL_STORE_BACKEND", "  gcs  ")
+        monkeypatch.setenv("WORKSPACE_MCP_GCS_BUCKET", "test-bucket")
+        monkeypatch.delenv("WORKSPACE_MCP_GCS_REQUIRE_CMEK", raising=False)
+        assert isinstance(get_credential_store(), GCSCredentialStore)
 
 
 class TestParseBoolEnv:

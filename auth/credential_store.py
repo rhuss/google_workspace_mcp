@@ -381,8 +381,15 @@ class GCSCredentialStore(CredentialStore):
         )
 
     def store_credential(self, user_email: str, credentials: Credentials) -> bool:
-        """Serialize and upload credentials, using generation preconditions
-        to guarantee atomic read-modify-write under concurrent writers."""
+        """Serialize and upload credentials using a generation precondition.
+
+        Fails fast on concurrent writes (HTTP 412). We deliberately do NOT
+        retry: the payload we hold reflects the *pre-race* state, so
+        retrying with a fresh generation but the same payload would
+        overwrite a racing writer's updates. Returning False signals the
+        caller to abandon this attempt; the next credential refresh will
+        read the latest state and try again.
+        """
         creds_data = {
             "token": credentials.token,
             "refresh_token": credentials.refresh_token,
@@ -394,36 +401,30 @@ class GCSCredentialStore(CredentialStore):
         }
         payload = json.dumps(creds_data).encode()
 
-        for attempt in range(3):
-            blob = self._bucket.blob(self._blob_name(user_email))
+        blob = self._bucket.blob(self._blob_name(user_email))
+        try:
             try:
-                try:
-                    blob.reload()
-                    generation = blob.generation
-                except NotFound:
-                    generation = 0  # must-not-exist precondition
+                blob.reload()
+                generation = blob.generation
+            except NotFound:
+                generation = 0  # must-not-exist precondition
 
-                blob.upload_from_string(
-                    payload,
-                    content_type="application/json",
-                    if_generation_match=generation,
-                )
-                logger.info(f"Stored credentials for {user_email}")
-                return True
-            except PreconditionFailed:
-                logger.info(
-                    f"Concurrent write detected for {user_email}; "
-                    f"retrying (attempt {attempt + 1}/3)"
-                )
-                continue
-            except Exception as e:
-                logger.error(f"Error storing credentials for {user_email}: {e}")
-                return False
-
-        logger.error(
-            f"Failed to store credentials for {user_email} after 3 attempts"
-        )
-        return False
+            blob.upload_from_string(
+                payload,
+                content_type="application/json",
+                if_generation_match=generation,
+            )
+            logger.info(f"Stored credentials for {user_email}")
+            return True
+        except PreconditionFailed:
+            logger.warning(
+                f"Concurrent write detected for {user_email}; "
+                f"abandoning this write so next refresh can merge current state"
+            )
+            return False
+        except Exception as e:
+            logger.error(f"Error storing credentials for {user_email}: {e}")
+            return False
 
     def delete_credential(self, user_email: str) -> bool:
         """Delete a user's credentials object; idempotent."""
@@ -496,11 +497,19 @@ def get_credential_store() -> CredentialStore:
     global _credential_store
 
     if _credential_store is None:
-        backend = os.getenv("WORKSPACE_MCP_CREDENTIAL_STORE_BACKEND", "").lower()
+        backend = (
+            os.getenv("WORKSPACE_MCP_CREDENTIAL_STORE_BACKEND", "").strip().lower()
+            or "local_directory"
+        )
         if backend == "gcs":
             _credential_store = GCSCredentialStore()
-        else:
+        elif backend == "local_directory":
             _credential_store = LocalDirectoryCredentialStore()
+        else:
+            raise ValueError(
+                f"Unsupported WORKSPACE_MCP_CREDENTIAL_STORE_BACKEND: {backend!r}. "
+                f"Expected 'local_directory' or 'gcs'."
+            )
         logger.info(f"Initialized credential store: {type(_credential_store).__name__}")
 
     return _credential_store
