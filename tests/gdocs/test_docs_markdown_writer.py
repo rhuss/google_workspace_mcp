@@ -167,3 +167,34 @@ def test_horizontal_rule_produces_separator_insert():
     inserts = [r for r in requests if "insertText" in r]
     # Expect at least 3 inserts: "Before\n", HR's separator, "After\n"
     assert len(inserts) >= 3
+
+
+def test_tab_id_threaded_through_all_insert_text_requests():
+    md = "# Heading\n\nParagraph with **bold**.\n\n- List item\n\n```python\ncode\n```"
+    requests = markdown_to_docs_requests(md, tab_id="t.0.1")
+
+    for r in requests:
+        # Every request that has a location or range should carry tabId
+        if "insertText" in r:
+            assert r["insertText"]["location"].get("tabId") == "t.0.1", \
+                f"Missing tabId in insertText: {r}"
+        if "updateTextStyle" in r:
+            assert r["updateTextStyle"]["range"].get("tabId") == "t.0.1", \
+                f"Missing tabId in updateTextStyle: {r}"
+        if "updateParagraphStyle" in r:
+            assert r["updateParagraphStyle"]["range"].get("tabId") == "t.0.1", \
+                f"Missing tabId in updateParagraphStyle: {r}"
+        if "createParagraphBullets" in r:
+            assert r["createParagraphBullets"]["range"].get("tabId") == "t.0.1", \
+                f"Missing tabId in createParagraphBullets: {r}"
+
+
+def test_no_tab_id_omits_tab_id_field_entirely():
+    requests = markdown_to_docs_requests("# Heading\n\nBody.")
+    for r in requests:
+        if "insertText" in r:
+            assert "tabId" not in r["insertText"]["location"]
+        if "updateTextStyle" in r:
+            assert "tabId" not in r["updateTextStyle"]["range"]
+        if "updateParagraphStyle" in r:
+            assert "tabId" not in r["updateParagraphStyle"]["range"]
