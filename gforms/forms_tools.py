@@ -6,7 +6,8 @@ This module provides MCP tools for interacting with Google Forms API.
 
 import logging
 import asyncio
-from typing import Optional, Dict, Any
+import json
+from typing import List, Optional, Dict, Any
 
 
 from auth.service_decorator import require_google_service
@@ -14,6 +15,105 @@ from core.server import server
 from core.utils import handle_http_errors
 
 logger = logging.getLogger(__name__)
+
+
+def _extract_option_values(options: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Extract valid option objects from Forms choice option objects.
+
+    Returns the full option dicts (preserving fields like ``isOther``,
+    ``image``, ``goToAction``, and ``goToSectionId``) while filtering
+    out entries that lack a truthy ``value``.
+    """
+    return [option for option in options if option.get("value")]
+
+
+def _get_question_type(question: Dict[str, Any]) -> str:
+    """Infer a stable question/item type label from a Forms question payload."""
+    choice_question = question.get("choiceQuestion")
+    if choice_question:
+        return choice_question.get("type", "CHOICE")
+
+    text_question = question.get("textQuestion")
+    if text_question:
+        return "PARAGRAPH" if text_question.get("paragraph") else "TEXT"
+
+    if "rowQuestion" in question:
+        return "GRID_ROW"
+    if "scaleQuestion" in question:
+        return "SCALE"
+    if "dateQuestion" in question:
+        return "DATE"
+    if "timeQuestion" in question:
+        return "TIME"
+    if "fileUploadQuestion" in question:
+        return "FILE_UPLOAD"
+    if "ratingQuestion" in question:
+        return "RATING"
+
+    return "QUESTION"
+
+
+def _serialize_form_item(item: Dict[str, Any], index: int) -> Dict[str, Any]:
+    """Serialize a Forms item with the key metadata agents need for edits."""
+    serialized_item: Dict[str, Any] = {
+        "index": index,
+        "itemId": item.get("itemId"),
+        "title": item.get("title", f"Question {index}"),
+    }
+
+    if item.get("description"):
+        serialized_item["description"] = item["description"]
+
+    if "questionItem" in item:
+        question = item.get("questionItem", {}).get("question", {})
+        serialized_item["type"] = _get_question_type(question)
+        serialized_item["required"] = question.get("required", False)
+
+        question_id = question.get("questionId")
+        if question_id:
+            serialized_item["questionId"] = question_id
+
+        choice_question = question.get("choiceQuestion")
+        if choice_question:
+            serialized_item["options"] = _extract_option_values(
+                choice_question.get("options", [])
+            )
+
+        return serialized_item
+
+    if "questionGroupItem" in item:
+        question_group = item.get("questionGroupItem", {})
+        columns = _extract_option_values(
+            question_group.get("grid", {}).get("columns", {}).get("options", [])
+        )
+
+        rows = []
+        for question in question_group.get("questions", []):
+            row: Dict[str, Any] = {
+                "title": question.get("rowQuestion", {}).get("title", "")
+            }
+            row_question_id = question.get("questionId")
+            if row_question_id:
+                row["questionId"] = row_question_id
+            row["required"] = question.get("required", False)
+            rows.append(row)
+
+        serialized_item["type"] = "GRID"
+        serialized_item["grid"] = {"rows": rows, "columns": columns}
+        return serialized_item
+
+    if "pageBreakItem" in item:
+        serialized_item["type"] = "PAGE_BREAK"
+    elif "textItem" in item:
+        serialized_item["type"] = "TEXT_ITEM"
+    elif "imageItem" in item:
+        serialized_item["type"] = "IMAGE"
+    elif "videoItem" in item:
+        serialized_item["type"] = "VIDEO"
+    else:
+        serialized_item["type"] = "UNKNOWN"
+
+    return serialized_item
 
 
 @server.tool()
@@ -92,18 +192,24 @@ async def get_form(service, user_google_email: str, form_id: str) -> str:
     )
 
     items = form.get("items", [])
-    questions_summary = []
-    for i, item in enumerate(items, 1):
-        item_title = item.get("title", f"Question {i}")
-        item_type = (
-            item.get("questionItem", {}).get("question", {}).get("required", False)
-        )
-        required_text = " (Required)" if item_type else ""
-        questions_summary.append(f"  {i}. {item_title}{required_text}")
+    serialized_items = [
+        _serialize_form_item(item, i) for i, item in enumerate(items, 1)
+    ]
 
-    questions_text = (
-        "\n".join(questions_summary) if questions_summary else "  No questions found"
+    items_summary = []
+    for serialized_item in serialized_items:
+        item_index = serialized_item["index"]
+        item_title = serialized_item.get("title", f"Item {item_index}")
+        item_type = serialized_item.get("type", "UNKNOWN")
+        required_text = " (Required)" if serialized_item.get("required") else ""
+        items_summary.append(
+            f"  {item_index}. {item_title} [{item_type}]{required_text}"
+        )
+
+    items_summary_text = (
+        "\n".join(items_summary) if items_summary else "  No items found"
     )
+    items_text = json.dumps(serialized_items, indent=2) if serialized_items else "[]"
 
     result = f"""Form Details for {user_google_email}:
 - Title: "{title}"
@@ -112,8 +218,10 @@ async def get_form(service, user_google_email: str, form_id: str) -> str:
 - Form ID: {form_id}
 - Edit URL: {edit_url}
 - Responder URL: {responder_url}
-- Questions ({len(items)} total):
-{questions_text}"""
+- Items ({len(items)} total):
+{items_summary_text}
+- Items (structured):
+{items_text}"""
 
     logger.info(f"Successfully retrieved form for {user_google_email}. ID: {form_id}")
     return result
@@ -282,4 +390,98 @@ async def list_form_responses(
     logger.info(
         f"Successfully retrieved {len(responses)} responses for {user_google_email}. Form ID: {form_id}"
     )
+    return result
+
+
+# Internal implementation function for testing
+async def _batch_update_form_impl(
+    service: Any,
+    form_id: str,
+    requests: List[Dict[str, Any]],
+) -> str:
+    """Internal implementation for batch_update_form.
+
+    Applies batch updates to a Google Form using the Forms API batchUpdate method.
+
+    Args:
+        service: Google Forms API service client.
+        form_id: The ID of the form to update.
+        requests: List of update request dictionaries.
+
+    Returns:
+        Formatted string with batch update results.
+    """
+    body = {"requests": requests}
+
+    result = await asyncio.to_thread(
+        service.forms().batchUpdate(formId=form_id, body=body).execute
+    )
+
+    replies = result.get("replies", [])
+
+    confirmation_message = f"""Batch Update Completed:
+- Form ID: {form_id}
+- URL: https://docs.google.com/forms/d/{form_id}/edit
+- Requests Applied: {len(requests)}
+- Replies Received: {len(replies)}"""
+
+    if replies:
+        confirmation_message += "\n\nUpdate Results:"
+        for i, reply in enumerate(replies, 1):
+            if "createItem" in reply:
+                item_id = reply["createItem"].get("itemId", "Unknown")
+                question_ids = reply["createItem"].get("questionId", [])
+                question_info = (
+                    f" (Question IDs: {', '.join(question_ids)})"
+                    if question_ids
+                    else ""
+                )
+                confirmation_message += (
+                    f"\n  Request {i}: Created item {item_id}{question_info}"
+                )
+            else:
+                confirmation_message += f"\n  Request {i}: Operation completed"
+
+    return confirmation_message
+
+
+@server.tool()
+@handle_http_errors("batch_update_form", service_type="forms")
+@require_google_service("forms", "forms")
+async def batch_update_form(
+    service,
+    user_google_email: str,
+    form_id: str,
+    requests: List[Dict[str, Any]],
+) -> str:
+    """
+    Apply batch updates to a Google Form.
+
+    Supports adding, updating, and deleting form items, as well as updating
+    form metadata and settings. This is the primary method for modifying form
+    content after creation.
+
+    Args:
+        user_google_email (str): The user's Google email address. Required.
+        form_id (str): The ID of the form to update.
+        requests (List[Dict[str, Any]]): List of update requests to apply.
+            Supported request types:
+            - createItem: Add a new question or content item
+            - updateItem: Modify an existing item
+            - deleteItem: Remove an item
+            - moveItem: Reorder an item
+            - updateFormInfo: Update form title/description
+            - updateSettings: Modify form settings (e.g., quiz mode)
+
+    Returns:
+        str: Details about the batch update operation results.
+    """
+    logger.info(
+        f"[batch_update_form] Invoked. Email: '{user_google_email}', "
+        f"Form ID: '{form_id}', Requests: {len(requests)}"
+    )
+
+    result = await _batch_update_form_impl(service, form_id, requests)
+
+    logger.info(f"Batch update completed successfully for {user_google_email}")
     return result
