@@ -532,14 +532,19 @@ async def start_auth_flow(
             auth_kwargs["login_hint"] = user_google_email
         auth_url, _ = flow.authorization_url(**auth_kwargs)
 
-        # Auto-open the auth URL in the user's browser
+        # Auto-open the auth URL in the user's browser (run blocking call off the event loop)
+        browser_opened = False
         try:
-            webbrowser.open(auth_url)
-            logger.info("Opened auth URL in browser automatically")
-            browser_opened = True
+            browser_opened = await asyncio.to_thread(webbrowser.open, auth_url)
+            if browser_opened:
+                logger.info("Opened auth URL in browser automatically")
+            else:
+                logger.info(
+                    "webbrowser.open() reported failure (likely headless environment); "
+                    "falling back to displaying URL"
+                )
         except Exception as e:
             logger.warning(f"Could not open browser automatically: {e}")
-            browser_opened = False
 
         store = get_oauth21_session_store()
         store.store_oauth_state(
@@ -549,21 +554,21 @@ async def start_auth_flow(
         )
 
         logger.info(
-            f"Auth flow started for {user_display_name}. Advise user to visit: {auth_url}"
+            f"Auth flow started for {user_display_name}. State: {oauth_state[:8]}... "
+            f"Browser opened automatically: {browser_opened}"
         )
 
         if browser_opened:
             message_lines = [
                 f"**ACTION REQUIRED: Google Authentication Needed for {user_display_name}**\n",
-                "The authorization page has been **automatically opened in your browser**.",
-                "Please complete the authorization in your browser.",
+                "1. The authorization page has been **automatically opened in your browser**. Please complete the authorization there.",
             ]
         else:
             message_lines = [
                 f"**ACTION REQUIRED: Google Authentication Needed for {user_display_name}**\n",
-                f"To proceed, the user must authorize this application for {service_name} access using all required permissions.",
-                "**LLM: The auth URL could not be opened automatically. Please instruct the user to open this URL manually:**",
-                f"Authorization URL: {auth_url}",
+                f"1. To proceed, the user must authorize this application for {service_name} access using all required permissions.",
+                "   **LLM: The auth URL could not be opened automatically. Please instruct the user to open this URL manually:**",
+                f"   Authorization URL: {auth_url}",
             ]
         session_info_for_llm = ""
 
