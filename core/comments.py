@@ -93,7 +93,7 @@ def create_comment_tools(app_name: str, file_id_param: str):
             document_id: str,
             max_comments: int | None = None,
         ) -> str:
-            """List all comments from a Google Document."""
+            """List all comments from a Google Document (optional max_comments to limit results)."""
             return await _read_comments_impl(
                 service, app_name, document_id, max_comments=max_comments
             )
@@ -132,7 +132,7 @@ def create_comment_tools(app_name: str, file_id_param: str):
             spreadsheet_id: str,
             max_comments: int | None = None,
         ) -> str:
-            """List all comments from a Google Spreadsheet."""
+            """List all comments from a Google Spreadsheet (optional max_comments to limit results)."""
             return await _read_comments_impl(
                 service, app_name, spreadsheet_id, max_comments=max_comments
             )
@@ -171,7 +171,7 @@ def create_comment_tools(app_name: str, file_id_param: str):
             presentation_id: str,
             max_comments: int | None = None,
         ) -> str:
-            """List all comments from a Google Presentation."""
+            """List all comments from a Google Presentation (optional max_comments to limit results)."""
             return await _read_comments_impl(
                 service, app_name, presentation_id, max_comments=max_comments
             )
