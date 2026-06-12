@@ -186,10 +186,7 @@ class TestReadCommentsImplPagination:
             mock_service, "document", "doc1", max_comments=5
         )
 
-        # We get page1 (3) + page2 (3) = 6, but asked for 5.
-        # The function fetches full pages and accumulates, so it gets 6
-        # but only because pageSize was set to min(100, 2) = 2 for the second call.
-        # Actually, let's verify the pageSize was set correctly.
+        assert "Found 5 comments" in result
         calls = mock_service.comments.return_value.list.call_args_list
         assert calls[0].kwargs["pageSize"] == 5  # min(100, 5)
         assert calls[1].kwargs["pageSize"] == 2  # min(100, 5-3)
