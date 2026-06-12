@@ -255,9 +255,7 @@ async def _read_comments_impl(
         if page_token is not None:
             kwargs["pageToken"] = page_token
 
-        response = await asyncio.to_thread(
-            service.comments().list(**kwargs).execute
-        )
+        response = await asyncio.to_thread(service.comments().list(**kwargs).execute)
 
         page_comments = response.get("comments", [])
         # Enforce hard limit: take only what we still need

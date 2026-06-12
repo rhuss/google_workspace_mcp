@@ -160,10 +160,12 @@ class TestReadCommentsImplPagination:
         """Multiple pages are fetched and combined."""
         page1 = [_make_comment(f"c{i}") for i in range(3)]
         page2 = [_make_comment(f"c{i}") for i in range(3, 6)]
-        mock_service = _mock_service_pages([
-            (page1, "token2"),
-            (page2, None),
-        ])
+        mock_service = _mock_service_pages(
+            [
+                (page1, "token2"),
+                (page2, None),
+            ]
+        )
 
         result = await _read_comments_impl(
             mock_service, "document", "doc1", max_comments=10
@@ -177,10 +179,12 @@ class TestReadCommentsImplPagination:
         """Pagination stops when max_comments is reached."""
         page1 = [_make_comment(f"c{i}") for i in range(3)]
         page2 = [_make_comment(f"c{i}") for i in range(3, 6)]
-        mock_service = _mock_service_pages([
-            (page1, "token2"),
-            (page2, "token3"),  # would have more, but we stop
-        ])
+        mock_service = _mock_service_pages(
+            [
+                (page1, "token2"),
+                (page2, "token3"),  # would have more, but we stop
+            ]
+        )
 
         result = await _read_comments_impl(
             mock_service, "document", "doc1", max_comments=5
@@ -229,9 +233,7 @@ class TestCommentToolsFactory:
                 f"{app} list_comments missing max_comments parameter"
             )
             p = sig.parameters["max_comments"]
-            assert p.default is None, (
-                f"{app} max_comments default should be None"
-            )
+            assert p.default is None, f"{app} max_comments default should be None"
 
 
 # ---------------------------------------------------------------------------
@@ -261,9 +263,7 @@ class TestCommentsEnvVar:
         mock_service = _mock_service_pages([(comments, None)])
 
         with patch.dict(os.environ, {"WORKSPACE_MCP_COMMENTS_MAX": "50"}):
-            await _read_comments_impl(
-                mock_service, "document", "doc1", max_comments=25
-            )
+            await _read_comments_impl(mock_service, "document", "doc1", max_comments=25)
 
         call_kwargs = mock_service.comments.return_value.list.call_args.kwargs
         assert call_kwargs["pageSize"] == 25
@@ -307,9 +307,7 @@ class TestCommentsEdgeCases:
         comments = [_make_comment(f"c{i}") for i in range(3)]
         mock_service = _mock_service_pages([(comments, None)])
 
-        await _read_comments_impl(
-            mock_service, "document", "doc1", max_comments=-5
-        )
+        await _read_comments_impl(mock_service, "document", "doc1", max_comments=-5)
         call_kwargs = mock_service.comments.return_value.list.call_args.kwargs
         assert call_kwargs["pageSize"] == 100
 
@@ -334,9 +332,7 @@ class TestCommentsEdgeCases:
         )
 
         with pytest.raises(Exception, match="API quota exceeded"):
-            await _read_comments_impl(
-                mock_service, "document", "doc1", max_comments=10
-            )
+            await _read_comments_impl(mock_service, "document", "doc1", max_comments=10)
 
     @pytest.mark.asyncio
     async def test_invalid_env_var_falls_back_to_default(self):
