@@ -42,3 +42,15 @@ ecosystem.config.cjs
 
 # ---- Agent instructions (not for distribution) -------------------------
 .github/instructions/
+
+# AI tool / dev artifacts
+**/.claude/
+**/.codex/
+**/.mcp.json
+**/.agents/
+**/.beads/
+**/.style/
+**/.specify/**
+!**/.specify/memory/
+!**/.specify/memory/**
+.playwright-mcp/
